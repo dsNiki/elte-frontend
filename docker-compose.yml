@@ -1,0 +1,31 @@
+services:
+  db:
+    image: mysql:8.0
+    container_name: studybuddy_db
+    environment:
+      MYSQL_ROOT_PASSWORD: password
+      MYSQL_DATABASE: studybuddy
+      MYSQL_USER: user
+      MYSQL_PASSWORD: password
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-u", "root", "-ppassword"]
+      interval: 5s
+      retries: 10
+
+  backend:
+    build: .
+    container_name: studybuddy_backend
+    ports:
+      - "5000:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      FLASK_ENV: development
+
+volumes:
+  db_data:
