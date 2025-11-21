@@ -6,3 +6,4 @@ python-dotenv
 bcrypt
 pymysql
 cryptography
+PyJWT
