@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+    <meta charset="UTF-8">
+    <title>StudyBuddy API Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: white;
+            padding: 40px;
+        }
+        h2 { margin-top: 40px; }
+        input, textarea {
+            width: 300px;
+            padding: 8px;
+            margin: 5px 0;
+            display: block;
+        }
+        button {
+            padding: 10px 20px;
+            margin-top: 10px;
+            cursor: pointer;
+        }
+        #output {
+            margin-top: 30px;
+            padding: 10px;
+            border: 1px solid #333;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+
+<h1>StudyBuddy Backend Test UI</h1>
+
+<!-- REGISZTRÁCIÓ -->
+<h2>Regisztráció</h2>
+<input id="reg_email" placeholder="Email">
+<input id="reg_password" placeholder="Jelszó" type="password">
+<input id="reg_major" placeholder="Szak (major)">
+<textarea id="reg_bio" placeholder="Bio"></textarea>
+<input id="reg_avatar_url" placeholder="Avatar URL">
+<button onclick="register()">Regisztráció</button>
+
+<!-- BEJELENTKEZÉS -->
+<h2>Login</h2>
+<input id="log_email" placeholder="Email">
+<input id="log_password" placeholder="Jelszó" type="password">
+<button onclick="login()">Login</button>
+
+<!-- PROFIL -->
+<h2>Profil lekérdezés</h2>
+<button onclick="profile()">Profil lekérése</button>
+
+<div id="output"></div>
+
+<script>
+async function register() {
+    const res = await fetch("/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            email: document.getElementById("reg_email").value,
+            password: document.getElementById("reg_password").value,
+            major: document.getElementById("reg_major").value,
+            bio: document.getElementById("reg_bio").value,
+            avatar_url: null
+        })
+    });
+    document.getElementById("output").innerText = JSON.stringify(await res.json(), null, 2);
+}
+
+async function login() {
+    const res = await fetch("/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            email: document.getElementById("log_email").value,
+            password: document.getElementById("log_password").value
+        })
+    });
+    const data = await res.json();
+    window.token = data.token;
+    document.getElementById("output").innerText = JSON.stringify(data, null, 2);
+}
+
+async function profile() {
+    const res = await fetch("/profile", {
+        method: "GET",
+        headers: { "Authorization": "Bearer " + window.token }
+    });
+    document.getElementById("output").innerText = JSON.stringify(await res.json(), null, 2);
+}
+</script>
+
+</body>
+</html>

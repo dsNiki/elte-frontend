@@ -1,127 +1,37 @@
-from flask import Flask, request, jsonify
-from models import db, User
+from flask import Flask
 from config import Config
-import re
-import bcrypt
-import jwt
-from datetime import datetime, timedelta
+from models import db
+from routes import register_routes
+
+from flask import render_template
 
 
-app = Flask(__name__)
-app.config.from_object(Config)
 
-db.init_app(app)
+def create_app():
+    app = Flask(__name__)
+    app.config.from_object(Config)
 
-# Email minta: csak ELTE
-ELTE_EMAIL_REGEX = r"^[a-zA-Z0-9._%+-]+@(student\.elte\.hu|elte\.hu)$"
+    # SQLAlchemy inicializálás
+    db.init_app(app)
 
-def create_jwt_token(user_id):
-    expiration = datetime.utcnow() + timedelta(hours=1)
-    payload = {
-        "user_id": user_id,
-        "exp": expiration
-    }
+    @app.route("/test-ui")
+    def test_ui():
+        return "<h1>Backend működik!</h1>"
 
-    token = jwt.encode(payload, Config.SECRET_KEY, algorithm="HS256")
-    return token
-
-
-def verify_jwt_token(token):
-    try:
-        data = jwt.decode(token, Config.SECRET_KEY, algorithms=["HS256"])
-        return data
-    except jwt.ExpiredSignatureError:
-        return None
-    except jwt.InvalidTokenError:
-        return None
-
-@app.route("/register", methods=["POST"])
-def register():
-    data = request.json
-
-    email = data.get("email")
-    password = data.get("password")
-    department = data.get("department")  
-    interests = data.get("interests")
-
-    # 1. Ellenőrzés: email formátum
-    if not re.match(ELTE_EMAIL_REGEX, email):
-        return jsonify({"error": "Csak ELTE-s email használható!"}), 400
-
-    # 2. Szak ellenőrzése (kötelező)
-    if not department:
-        return jsonify({"error": "A szak megadása kötelező!"}), 400
-
-    # 3. Már létezik?
-    if User.query.filter_by(email=email).first():
-        return jsonify({"error": "Ez az email már regisztrálva van!"}), 400
-
-    # 3. Jelszó hash-elés
-    password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode()
-
-    # 4. Jelszó hash-elés
-    password_hash = bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt()).decode()
-
-    # 5. Mentés adatbázisba
-    new_user = User(
-        email=email,
-        password_hash=password_hash,
-        department=department,
-        interests=interests
-    )
+    @app.route("/test")
+    def test_page():
+        return render_template("test.html")
     
-    db.session.add(new_user)
-    db.session.commit()
+    # Route-ok regisztrálása külön file-ból
+    register_routes(app)
 
-    return jsonify({"message": "Sikeres regisztráció!", "user_id": new_user.id}), 201
-
-
-@app.route("/login", methods=["POST"])
-def login():
-    data = request.json
-    email = data.get("email")
-    password = data.get("password")
-
-    user = User.query.filter_by(email=email).first()
-
-    if not user:
-        return jsonify({"error": "Hibás email vagy jelszó!"}), 401
-
-    # Jelszó ellenőrzés
-    if not bcrypt.checkpw(password.encode('utf-8'), user.password_hash.encode()):
-        return jsonify({"error": "Hibás email vagy jelszó!"}), 401
-
-    # Token generálás
-    token = create_jwt_token(user.id)
-    
-    return jsonify({"message": "Sikeres bejelentkezés!", "token": token}), 200
-
-@app.route("/profile", methods=["GET"])
-def profile():
-    auth_header = request.headers.get("Authorization")
-
-    if not auth_header:
-        return jsonify({"error": "Hiányzó Authorization header"}), 401
-
-    try:
-        token = auth_header.split(" ")[1]
-    except:
-        return jsonify({"error": "Hibás Authorization formátum"}), 401
-
-    decoded = verify_jwt_token(token)
-
-    if not decoded:
-        return jsonify({"error": "Érvénytelen vagy lejárt token"}), 401
-
-    user = User.query.get(decoded["user_id"])
-
-    return jsonify({
-        "email": user.email,
-        "department": user.department,
-        "interests": user.interests
-    })
-
-if __name__ == "__main__":
+    # Adatbázis létrehozása, ha nem létezik
     with app.app_context():
         db.create_all()
+
+    return app
+
+
+if __name__ == "__main__":
+    app = create_app()
     app.run(host="0.0.0.0", port=5000, debug=True)
