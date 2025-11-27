@@ -5,6 +5,7 @@ const initialState = {
   isAuthenticated: false,
   loading: false,
   error: null,
+  initialized: false, // Tracks if auth state has been initialized from localStorage
 };
 
 const authSlice = createSlice({
@@ -55,6 +56,7 @@ const authSlice = createSlice({
         state.isAuthenticated = false;
         state.user = null;
       }
+      state.initialized = true; // Mark as initialized
     },
   },
 });

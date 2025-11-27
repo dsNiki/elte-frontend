@@ -104,6 +104,9 @@ const realAuthService = {
       if (response.data.token) {
         localStorage.setItem("authToken", response.data.token);
       }
+      if (response.data.user) {
+        localStorage.setItem("authUser", JSON.stringify(response.data.user));
+      }
       return response.data;
     } catch (error) {
       throw error.response?.data?.message || "Regisztráció sikertelen";
@@ -118,6 +121,9 @@ const realAuthService = {
       });
       if (response.data.token) {
         localStorage.setItem("authToken", response.data.token);
+      }
+      if (response.data.user) {
+        localStorage.setItem("authUser", JSON.stringify(response.data.user));
       }
       return response.data;
     } catch (error) {
