@@ -427,3 +427,49 @@ def register_routes(app):
                 })
 
         return jsonify({"groups": group_list}), 200
+
+    @app.route("/groups/<int:group_id>/members", methods=["GET"])
+    def list_group_mmbrs(group_id):
+        auth_header = request.headers.get("Authorization")
+        if not auth_header:
+            return jsonify({"error": "Hiányzó token"}), 401
+
+        try:
+            token = auth_header.split(" ")[1]
+            decoded = verify_jwt_token(token)
+        except Exception:
+            return jsonify({"error": "Hibás token"}), 401
+
+        if not decoded:
+            return jsonify({"error": "Érvénytelen vagy lejárt token"}), 401
+
+        user_id = decoded["user_id"]
+        memberships = GroupMember.query.filter_by(user_id=user_id).all()
+
+        if not memberships:
+            return jsonify({
+                "groups": [],
+                "message": "Még nem vagy tagja egyetlen tanulócsoportnak sem."
+            }), 200
+        
+
+
+        group_ids = [m.group_id for m in memberships]
+
+
+        if group_id not in group_ids:
+            return jsonify({"error": "Nincs jogosultság ehhez a csoporthoz."}), 403
+
+
+        group_memberships = GroupMember.query.filter_by(group_id=group_id).all()
+
+        members = []
+        for gm in group_memberships:
+            members.append({
+                "user_id": gm.user_id,
+            })
+
+        return jsonify({
+            "group_id": group_id,
+            "members": members
+        }), 200
