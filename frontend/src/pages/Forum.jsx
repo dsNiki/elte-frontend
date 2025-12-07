@@ -48,6 +48,7 @@ const Forum = () => {
   const [loadingComments, setLoadingComments] = useState({});
   const [newComments, setNewComments] = useState({});
   const [submittingComment, setSubmittingComment] = useState({});
+  const [groupMembers, setGroupMembers] = useState([]);
 
   const fetchPosts = useCallback(async () => {
     if (!groupId) return;
@@ -80,6 +81,13 @@ const Forum = () => {
 
         if (foundGroup) {
           setGroup(foundGroup);
+          // Csoporttagok betöltése a monogramokhoz
+          try {
+            const membersData = await groupService.getGroupMembers(groupId);
+            setGroupMembers(membersData || []);
+          } catch (err) {
+            console.error("Csoporttagok betöltési hiba:", err);
+          }
           // Posztok betöltése
           await fetchPosts();
         } else {
@@ -182,6 +190,23 @@ const Forum = () => {
       hour: "2-digit",
       minute: "2-digit",
     });
+  };
+
+  const getInitials = (name) => {
+    if (!name) return "U";
+    const words = name.trim().split(" ");
+    if (words.length >= 2) {
+      return (words[0][0] + words[1][0]).toUpperCase();
+    }
+    return name.substring(0, 2).toUpperCase();
+  };
+
+  const getAuthorInitials = (authorId) => {
+    const member = groupMembers.find((m) => m.user_id === authorId);
+    if (member) {
+      return getInitials(member.name || member.email);
+    }
+    return "U";
   };
 
   // Ha nincs hozzáférés, azonnal redirect
@@ -439,7 +464,7 @@ const Forum = () => {
                                             fontSize: "0.875rem",
                                           }}
                                         >
-                                          {String(comment.author_id).charAt(0)}
+                                          {getAuthorInitials(comment.author_id)}
                                         </Avatar>
                                         <Typography
                                           variant="caption"
