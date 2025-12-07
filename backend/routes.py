@@ -1,8 +1,8 @@
-from flask import request, jsonify
+from flask import request, jsonify  # pyright: ignore[reportMissingImports]
 import re
-import bcrypt
-import jwt
-from datetime import datetime, timedelta
+import bcrypt  # pyright: ignore[reportMissingImports]
+import jwt  # pyright: ignore[reportMissingImports]
+from datetime import datetime, timedelta, timezone
 from config import Config
 from models import db, User, Group, GroupMember, Post, Comment
 
@@ -12,7 +12,7 @@ ELTE_EMAIL_REGEX = r"^[a-zA-Z0-9._%+-]+@(student\.elte\.hu|elte\.hu)$"
 
 
 def create_jwt_token(user_id):
-    expiration = datetime.utcnow() + timedelta(hours=1)
+    expiration = datetime.now(timezone.utc) + timedelta(hours=1)
     payload = {
         "user_id": user_id,
         "exp": expiration
@@ -466,11 +466,8 @@ def register_routes(app):
         
         
         
-    @app.route("/groups/<int:group_id>/posts", methods=["POST", "OPTIONS"])
+    @app.route("/groups/<int:group_id>/posts", methods=["POST"])
     def create_post(group_id):
-        if request.method == "OPTIONS":
-            return "", 200
-
         ################ Auth checks and case handling ##############################
         
         auth_header = request.headers.get("Authorization")
@@ -516,8 +513,8 @@ def register_routes(app):
             content=content,
             group_id=group_id,
             author_id=user_id,
-            created_at=datetime.datetime.now(datetime.timezone.utc),
-            updated_at=datetime.datetime.now(datetime.timezone.utc)
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
         )
 
         db.session.add(new_post)
@@ -626,7 +623,7 @@ def register_routes(app):
             comment=content,
             post_id=post_id,
             author_id=user_id,
-            created_at=datetime.now(datetime.timezone.utc)
+            created_at=datetime.now(timezone.utc)
         )
 
         db.session.add(new_comment)
