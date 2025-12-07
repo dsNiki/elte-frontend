@@ -105,12 +105,12 @@ const Forum = () => {
 
     setSubmittingPost(true);
     setError(null);
+    setOpenPostDialog(false);
 
     try {
       await forumService.createPost(groupId, newPostTitle, newPostContent);
       setNewPostTitle("");
       setNewPostContent("");
-      setOpenPostDialog(false);
       await fetchPosts();
     } catch (err) {
       console.error("Poszt létrehozási hiba:", err);
