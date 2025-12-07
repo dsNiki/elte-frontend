@@ -1,9 +1,9 @@
 import axios from "axios";
 
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const api = axios.create({
-  baseURL: `${API_URL}`,  // http://localhost:5000/
+  baseURL: `${API_URL}`, // http://localhost:5000/
   headers: {
     "Content-Type": "application/json",
   },
@@ -22,7 +22,7 @@ const authService = {
         major,
         hobbies,
       });
-      
+
       if (response.data.token) {
         localStorage.setItem("authToken", response.data.token);
       }
@@ -50,10 +50,9 @@ const authService = {
     }
   },
 
-
   logout: () => {
-    localStorage.clear();  // ← MINDEN törlése!
-    window.dispatchEvent(new Event('storage'));  // ← Redux értesítés
+    localStorage.clear(); // ← MINDEN törlése!
+    window.dispatchEvent(new Event("storage")); // ← Redux értesítés
   },
 
   getUser: () => {
@@ -66,27 +65,30 @@ const authService = {
   },
 };
 
-
 // GROUP SERVICE
 const groupService = {
   searchGroups: async (subject) => {
     const token = getAuthToken();
-    const response = await api.get(`/groups/search?q=${encodeURIComponent(subject)}`, {
-      headers: { 
-        Authorization: `Bearer ${token}`
+    const response = await api.get(
+      `/groups/search?q=${encodeURIComponent(subject)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       }
-    });
+    );
     return response.data;
   },
 
   joinGroup: async (groupId) => {
     const token = getAuthToken();
-    const response = await api.post("/groups/join", 
+    const response = await api.post(
+      "/groups/join",
       { group_id: groupId },
       {
-        headers: { 
-          Authorization: `Bearer ${token}`
-        }
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
       }
     );
     return response.data;
@@ -95,9 +97,9 @@ const groupService = {
   myGroups: async () => {
     const token = getAuthToken();
     const response = await api.get("/groups/my-groups", {
-      headers: { 
-        Authorization: `Bearer ${token}`
-      }
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
     });
     return response.data;
   },
@@ -110,9 +112,107 @@ const groupService = {
       },
     });
     return response.data.members;
-  }
+  },
 };
 
+// FORUM SERVICE
+const forumService = {
+  getPosts: async (groupId) => {
+    const token = getAuthToken();
+    const response = await api.get(`/groups/${groupId}/posts`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data.posts || [];
+  },
 
-export { authService, groupService };
+  createPost: async (groupId, title, content) => {
+    const token = getAuthToken();
+    const response = await api.post(
+      `/groups/${groupId}/posts`,
+      { title, content },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data.post;
+  },
+
+  getComments: async (postId) => {
+    const token = getAuthToken();
+    const response = await api.get(`/posts/${postId}/comments`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data.comments || [];
+  },
+
+  createComment: async (postId, content) => {
+    const token = getAuthToken();
+    const response = await api.post(
+      `/posts/${postId}/comments`,
+      { content },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data.comment;
+  },
+
+  deletePost: async (postId) => {
+    const token = getAuthToken();
+    const response = await api.delete(`/posts/${postId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data;
+  },
+
+  updatePost: async (postId, title, content) => {
+    const token = getAuthToken();
+    const response = await api.put(
+      `/posts/${postId}`,
+      { title, content },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data.post;
+  },
+
+  deleteComment: async (commentId) => {
+    const token = getAuthToken();
+    const response = await api.delete(`/comments/${commentId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data;
+  },
+
+  updateComment: async (commentId, content) => {
+    const token = getAuthToken();
+    const response = await api.put(
+      `/comments/${commentId}`,
+      { content },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data.comment;
+  },
+};
+
+export { authService, groupService, forumService };
 export default authService;

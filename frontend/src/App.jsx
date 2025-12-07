@@ -10,6 +10,7 @@ import { initializeAuth } from "./redux/slices/authSlice";
 import Login from "./components/Auth/Login";
 import Register from "./components/Auth/Register";
 import Dashboard from "./pages/Dashboard";
+import Forum from "./pages/Forum";
 import "./App.css";
 
 function App() {
@@ -63,6 +64,10 @@ function App() {
         <Route
           path="/dashboard"
           element={isAuthenticated ? <Dashboard /> : <Navigate to="/login" />}
+        />
+        <Route
+          path="/forum/:groupId"
+          element={isAuthenticated ? <Forum /> : <Navigate to="/login" />}
         />
 
         {/* Alapértelmezett útvonal */}

@@ -14,9 +14,12 @@ from flask import render_template
 def create_app():
     app = Flask(__name__)
     # CORS MINDEN HTTP metódusra (OPTIONS, POST, GET stb.)
-    CORS(app, origins=["http://localhost:3000"], 
-         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-         allow_headers=["Content-Type", "Authorization"])
+    CORS(app, 
+         origins=["http://localhost:3000"], 
+         methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+         allow_headers=["Content-Type", "Authorization"],
+         supports_credentials=True,
+         expose_headers=["Content-Type"])
 
     @app.errorhandler(HTTPException)
     def handle_http_error(e):

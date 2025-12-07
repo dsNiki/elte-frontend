@@ -1,8 +1,8 @@
-from flask import request, jsonify
+from flask import request, jsonify  # pyright: ignore[reportMissingImports]
 import re
-import bcrypt
-import jwt
-from datetime import datetime, timedelta
+import bcrypt  # pyright: ignore[reportMissingImports]
+import jwt  # pyright: ignore[reportMissingImports]
+from datetime import datetime, timedelta, timezone
 from config import Config
 from models import db, User, Group, GroupMember, Post, Comment
 
@@ -12,7 +12,7 @@ ELTE_EMAIL_REGEX = r"^[a-zA-Z0-9._%+-]+@(student\.elte\.hu|elte\.hu)$"
 
 
 def create_jwt_token(user_id):
-    expiration = datetime.utcnow() + timedelta(hours=1)
+    expiration = datetime.now(timezone.utc) + timedelta(hours=1)
     payload = {
         "user_id": user_id,
         "exp": expiration
@@ -466,11 +466,8 @@ def register_routes(app):
         
         
         
-    @app.route("/groups/<int:group_id>/posts", methods=["POST", "OPTIONS"])
+    @app.route("/groups/<int:group_id>/posts", methods=["POST"])
     def create_post(group_id):
-        if request.method == "OPTIONS":
-            return "", 200
-
         ################ Auth checks and case handling ##############################
         
         auth_header = request.headers.get("Authorization")
@@ -516,8 +513,8 @@ def register_routes(app):
             content=content,
             group_id=group_id,
             author_id=user_id,
-            created_at=datetime.datetime.now(datetime.timezone.utc),
-            updated_at=datetime.datetime.now(datetime.timezone.utc)
+            created_at=datetime.now(timezone.utc),
+            updated_at=datetime.now(timezone.utc)
         )
 
         db.session.add(new_post)
@@ -583,7 +580,70 @@ def register_routes(app):
             "posts": posts_json
         }), 200
 
+    @app.route("/posts/<int:post_id>", methods=["PUT", "DELETE"])
+    def update_or_delete_post(post_id):
+        ################### Auth check and case handling
+        auth_header = request.headers.get("Authorization")
+        if not auth_header:
+            return jsonify({"error": "Hiányzó token"}), 401
 
+        try:
+            token = auth_header.split(" ")[1]
+            decoded = verify_jwt_token(token)
+        except Exception:
+            return jsonify({"error": "Hibás token"}), 401
+
+        if not decoded:
+            return jsonify({"error": "Érvénytelen vagy lejárt token"}), 401
+
+        user_id = decoded["user_id"]
+
+        post = Post.query.get(post_id)
+        if not post or post.deleted_at is not None:
+            return jsonify({"error": "Poszt nem található"}), 404
+
+        # Csak a poszt szerzője módosíthatja vagy törölheti
+        if post.author_id != user_id:
+            return jsonify({"error": "Nincs jogosultságod a poszt módosításához"}), 403
+
+        if request.method == "PUT":
+            # Szerkesztés
+            data = request.get_json()
+            if not data:
+                return jsonify({"error": "Nincs JSON adat"}), 400
+
+            title = data.get("title")
+            content = data.get("content")
+
+            if not title or not content:
+                return jsonify({"error": "title és content kötelező"}), 400
+
+            post.title = title
+            post.content = content
+            post.updated_at = datetime.now(timezone.utc)
+            db.session.commit()
+
+            return jsonify({
+                "message": "Poszt sikeresen frissítve",
+                "post": {
+                    "id": post.id,
+                    "title": post.title,
+                    "content": post.content,
+                    "group_id": post.group_id,
+                    "author_id": post.author_id,
+                    "created_at": post.created_at.isoformat() if post.created_at else None,
+                    "updated_at": post.updated_at.isoformat() if post.updated_at else None,
+                }
+            }), 200
+
+        elif request.method == "DELETE":
+            # Soft delete
+            post.deleted_at = datetime.now(timezone.utc)
+            db.session.commit()
+
+            return jsonify({
+                "message": "Poszt sikeresen törölve"
+            }), 200
 
     @app.route("/posts/<int:post_id>/comments", methods=["POST", "OPTIONS"])
     def create_comment(post_id):
@@ -623,10 +683,10 @@ def register_routes(app):
         ################################################################
 
         new_comment = Comment(
-            content=content,
+            comment=content,
             post_id=post_id,
             author_id=user_id,
-            created_at=datetime.now(datetime.timezone.utc)
+            created_at=datetime.now(timezone.utc)
         )
 
         db.session.add(new_comment)
@@ -636,7 +696,7 @@ def register_routes(app):
             "message": "Komment sikeresen létrehozva",
             "comment": {
                 "id": new_comment.id,
-                "content": new_comment.content,
+                "content": new_comment.comment,
                 "post_id": new_comment.post_id,
                 "author_id": new_comment.author_id,
                 "created_at": new_comment.created_at.isoformat()
@@ -666,7 +726,7 @@ def register_routes(app):
         for c in comments:
             comments_json.append({
                 "id": c.id,
-                "content": c.content,
+                "content": c.comment,
                 "post_id": c.post_id,
                 "author_id": c.author_id,
                 "created_at": c.created_at.isoformat() if c.created_at else None,
@@ -676,3 +736,64 @@ def register_routes(app):
             "post_id": post_id,
             "comments": comments_json
         }), 200
+
+    @app.route("/comments/<int:comment_id>", methods=["PUT", "DELETE"])
+    def update_or_delete_comment(comment_id):
+        ################### Auth check and case handling
+        auth_header = request.headers.get("Authorization")
+        if not auth_header:
+            return jsonify({"error": "Hiányzó token"}), 401
+
+        try:
+            token = auth_header.split(" ")[1]
+            decoded = verify_jwt_token(token)
+        except Exception:
+            return jsonify({"error": "Hibás token"}), 401
+
+        if not decoded:
+            return jsonify({"error": "Érvénytelen vagy lejárt token"}), 401
+
+        user_id = decoded["user_id"]
+
+        comment = Comment.query.get(comment_id)
+        if not comment or comment.deleted_at is not None:
+            return jsonify({"error": "Komment nem található"}), 404
+
+        # Csak a komment szerzője módosíthatja vagy törölheti
+        if comment.author_id != user_id:
+            return jsonify({"error": "Nincs jogosultságod a komment módosításához"}), 403
+
+        if request.method == "PUT":
+            # Szerkesztés
+            data = request.get_json()
+            if not data:
+                return jsonify({"error": "Nincs JSON adat"}), 400
+
+            content = data.get("content")
+            if not content:
+                return jsonify({"error": "A comment content kötelező"}), 400
+
+            comment.comment = content
+            comment.updated_at = datetime.now(timezone.utc)
+            db.session.commit()
+
+            return jsonify({
+                "message": "Komment sikeresen frissítve",
+                "comment": {
+                    "id": comment.id,
+                    "content": comment.comment,
+                    "post_id": comment.post_id,
+                    "author_id": comment.author_id,
+                    "created_at": comment.created_at.isoformat() if comment.created_at else None,
+                    "updated_at": comment.updated_at.isoformat() if comment.updated_at else None,
+                }
+            }), 200
+
+        elif request.method == "DELETE":
+            # Soft delete
+            comment.deleted_at = datetime.now(timezone.utc)
+            db.session.commit()
+
+            return jsonify({
+                "message": "Komment sikeresen törölve"
+            }), 200
