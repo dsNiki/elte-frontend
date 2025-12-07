@@ -27,6 +27,7 @@ import {
   Send as SendIcon,
   ExpandMore as ExpandMoreIcon,
   ExpandLess as ExpandLessIcon,
+  People as PeopleIcon,
 } from "@mui/icons-material";
 import { groupService, forumService } from "../services/api";
 import "./Dashboard.css";
@@ -49,6 +50,8 @@ const Forum = () => {
   const [newComments, setNewComments] = useState({});
   const [submittingComment, setSubmittingComment] = useState({});
   const [groupMembers, setGroupMembers] = useState([]);
+  const [membersModalOpen, setMembersModalOpen] = useState(false);
+  const [selectedGroupMembers, setSelectedGroupMembers] = useState(null);
 
   const fetchPosts = useCallback(async () => {
     if (!groupId) return;
@@ -209,6 +212,25 @@ const Forum = () => {
     return "U";
   };
 
+  const handleViewMembers = async () => {
+    setMembersModalOpen(true);
+    setSelectedGroupMembers(null);
+
+    try {
+      const members = await groupService.getGroupMembers(groupId);
+      setSelectedGroupMembers(members || []);
+    } catch (err) {
+      console.error("Tagok hiba:", err);
+      setError(err.message || "Hiba történt a tagok lekérése során");
+      setSelectedGroupMembers([]);
+    }
+  };
+
+  const handleCloseMembersModal = () => {
+    setMembersModalOpen(false);
+    setSelectedGroupMembers(null);
+  };
+
   // Ha nincs hozzáférés, azonnal redirect
   if (shouldRedirect) {
     return <Navigate to="/dashboard" replace />;
@@ -251,6 +273,12 @@ const Forum = () => {
             alignItems: "center",
             gap: 2,
             mb: 4,
+            p: 3,
+            borderRadius: "20px",
+            background:
+              "linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%)",
+            border: "1px solid rgba(102, 126, 234, 0.1)",
+            boxShadow: "0 4px 20px rgba(102, 126, 234, 0.1)",
           }}
         >
           <IconButton
@@ -260,7 +288,9 @@ const Forum = () => {
               color: "white",
               "&:hover": {
                 background: "linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%)",
+                transform: "scale(1.05)",
               },
+              transition: "transform 0.2s",
             }}
           >
             <ArrowBackIcon />
@@ -274,6 +304,7 @@ const Forum = () => {
                 WebkitBackgroundClip: "text",
                 WebkitTextFillColor: "transparent",
                 backgroundClip: "text",
+                mb: 0.5,
               }}
             >
               {group?.name || "Forum"}
@@ -282,15 +313,39 @@ const Forum = () => {
               {group?.subject || "Csoport forum"}
             </Typography>
           </Box>
+          <IconButton
+            onClick={handleViewMembers}
+            sx={{
+              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              color: "white",
+              "&:hover": {
+                background: "linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%)",
+                transform: "scale(1.05)",
+              },
+              transition: "transform 0.2s",
+              mr: 1,
+            }}
+            title="Csoporttagok megtekintése"
+          >
+            <PeopleIcon />
+          </IconButton>
           <Button
             variant="contained"
             startIcon={<AddIcon />}
             onClick={() => setOpenPostDialog(true)}
             sx={{
               background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              borderRadius: "12px",
+              px: 3,
+              py: 1.5,
+              fontWeight: 600,
+              boxShadow: "0 4px 15px rgba(102, 126, 234, 0.3)",
               "&:hover": {
                 background: "linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%)",
+                boxShadow: "0 6px 20px rgba(102, 126, 234, 0.4)",
+                transform: "translateY(-2px)",
               },
+              transition: "all 0.2s",
             }}
           >
             Új poszt
@@ -350,33 +405,42 @@ const Forum = () => {
                   },
                 }}
               >
-                <CardContent sx={{ p: 3 }}>
+                <CardContent sx={{ p: 4 }}>
                   <Box
                     sx={{
                       display: "flex",
                       justifyContent: "space-between",
                       alignItems: "flex-start",
-                      mb: 2,
+                      mb: 3,
                     }}
                   >
                     <Box flex={1}>
                       <Typography
-                        variant="h6"
+                        variant="h5"
                         sx={{
-                          fontWeight: 600,
+                          fontWeight: 700,
                           color: "#333",
-                          mb: 1,
+                          mb: 1.5,
+                          lineHeight: 1.3,
                         }}
                       >
                         {post.title}
                       </Typography>
-                      <Typography
-                        variant="body2"
-                        color="text.secondary"
-                        sx={{ mb: 1 }}
+                      <Box
+                        sx={{ display: "flex", alignItems: "center", gap: 1 }}
                       >
-                        {formatDate(post.created_at)}
-                      </Typography>
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 0.5,
+                          }}
+                        >
+                          {formatDate(post.created_at)}
+                        </Typography>
+                      </Box>
                     </Box>
                   </Box>
 
@@ -384,8 +448,10 @@ const Forum = () => {
                     variant="body1"
                     sx={{
                       color: "#555",
-                      mb: 2,
+                      mb: 3,
                       whiteSpace: "pre-wrap",
+                      lineHeight: 1.8,
+                      fontSize: "1rem",
                     }}
                   >
                     {post.content}
@@ -439,41 +505,66 @@ const Forum = () => {
                                     <Box
                                       key={comment.id}
                                       sx={{
-                                        mb: 2,
-                                        p: 2,
-                                        borderRadius: "12px",
+                                        mb: 2.5,
+                                        p: 2.5,
+                                        borderRadius: "16px",
                                         background:
                                           "linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%)",
                                         border:
-                                          "1px solid rgba(102, 126, 234, 0.1)",
+                                          "1px solid rgba(102, 126, 234, 0.15)",
+                                        transition: "all 0.2s",
+                                        "&:hover": {
+                                          border:
+                                            "1px solid rgba(102, 126, 234, 0.3)",
+                                          boxShadow:
+                                            "0 2px 8px rgba(102, 126, 234, 0.1)",
+                                        },
                                       }}
                                     >
                                       <Box
                                         sx={{
                                           display: "flex",
                                           alignItems: "center",
-                                          gap: 1,
-                                          mb: 1,
+                                          gap: 1.5,
+                                          mb: 1.5,
                                         }}
                                       >
                                         <Avatar
                                           sx={{
-                                            width: 32,
-                                            height: 32,
-                                            bgcolor: "#667eea",
-                                            fontSize: "0.875rem",
+                                            width: 40,
+                                            height: 40,
+                                            background:
+                                              "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                                            color: "white",
+                                            fontSize: "0.9rem",
+                                            fontWeight: 600,
+                                            boxShadow:
+                                              "0 2px 8px rgba(102, 126, 234, 0.3)",
                                           }}
                                         >
                                           {getAuthorInitials(comment.author_id)}
                                         </Avatar>
-                                        <Typography
-                                          variant="caption"
-                                          color="text.secondary"
-                                        >
-                                          {formatDate(comment.created_at)}
-                                        </Typography>
+                                        <Box>
+                                          <Typography
+                                            variant="caption"
+                                            color="text.secondary"
+                                            sx={{
+                                              display: "block",
+                                              fontSize: "0.75rem",
+                                            }}
+                                          >
+                                            {formatDate(comment.created_at)}
+                                          </Typography>
+                                        </Box>
                                       </Box>
-                                      <Typography variant="body2">
+                                      <Typography
+                                        variant="body2"
+                                        sx={{
+                                          color: "#444",
+                                          lineHeight: 1.6,
+                                          pl: 5.5,
+                                        }}
+                                      >
                                         {comment.content}
                                       </Typography>
                                     </Box>
@@ -550,12 +641,19 @@ const Forum = () => {
         onClose={() => setOpenPostDialog(false)}
         maxWidth="md"
         fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: "24px",
+            boxShadow: "0 8px 32px rgba(102, 126, 234, 0.2)",
+          },
+        }}
       >
         <DialogTitle
           sx={{
             background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
             color: "white",
             fontWeight: 600,
+            borderRadius: "24px 24px 0 0",
           }}
         >
           Új poszt létrehozása
@@ -595,6 +693,119 @@ const Forum = () => {
             }}
           >
             {submittingPost ? <CircularProgress size={20} /> : "Létrehozás"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Tagok lista Modal */}
+      <Dialog
+        open={membersModalOpen}
+        onClose={handleCloseMembersModal}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: "24px",
+            background: "rgba(255, 255, 255, 1)",
+            boxShadow: "0 8px 32px rgba(102, 126, 234, 0.2)",
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            color: "white",
+            borderRadius: "24px 24px 0 0",
+            pb: 2,
+          }}
+        >
+          <Box display="flex" alignItems="center" gap={1}>
+            <PeopleIcon sx={{ fontSize: 28 }} />
+            <Typography variant="h5" component="div" sx={{ fontWeight: 700 }}>
+              Tagok - {group?.name || "Csoport"}
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          {selectedGroupMembers === null ? (
+            <Box sx={{ py: 3, textAlign: "center" }}>
+              <CircularProgress size={24} />
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                Tagok betöltése...
+              </Typography>
+            </Box>
+          ) : selectedGroupMembers.length === 0 ? (
+            <Box sx={{ py: 3, textAlign: "center" }}>
+              <Typography variant="body2" color="text.secondary">
+                Még nincsenek tagok ebben a csoportban.
+              </Typography>
+            </Box>
+          ) : (
+            <Box sx={{ mt: 2 }}>
+              {selectedGroupMembers.map((member, index) => (
+                <Box key={member.user_id || index}>
+                  <Box
+                    display="flex"
+                    alignItems="center"
+                    gap={2}
+                    sx={{ py: 1.5 }}
+                  >
+                    <Avatar
+                      sx={{
+                        width: 48,
+                        height: 48,
+                        background:
+                          "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                        color: "#ffffff",
+                        fontSize: "18px",
+                        fontWeight: 600,
+                        boxShadow: "0 2px 8px rgba(102, 126, 234, 0.3)",
+                      }}
+                    >
+                      {getInitials(member.name || member.email)}
+                    </Avatar>
+                    <Box flex={1}>
+                      <Typography variant="body1" sx={{ fontWeight: 500 }}>
+                        {member.name || "Névtelen felhasználó"}
+                      </Typography>
+                      <Box>
+                        <Typography
+                          variant="body2"
+                          color="text.secondary"
+                          sx={{ mb: 0.25 }}
+                        >
+                          {member.email || "Nincs email"}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {member.major || ""}
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Box>
+                  {index < selectedGroupMembers.length - 1 && <Divider />}
+                </Box>
+              ))}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button
+            onClick={handleCloseMembersModal}
+            variant="contained"
+            sx={{
+              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              borderRadius: "12px",
+              px: 3,
+              py: 1,
+              fontWeight: 600,
+              boxShadow: "0 4px 15px rgba(102, 126, 234, 0.3)",
+              "&:hover": {
+                background: "linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%)",
+                boxShadow: "0 6px 20px rgba(102, 126, 234, 0.4)",
+              },
+            }}
+          >
+            Bezárás
           </Button>
         </DialogActions>
       </Dialog>
