@@ -580,8 +580,8 @@ def register_routes(app):
             "posts": posts_json
         }), 200
 
-    @app.route("/posts/<int:post_id>", methods=["DELETE"])
-    def delete_post(post_id):
+    @app.route("/posts/<int:post_id>", methods=["PUT", "DELETE"])
+    def update_or_delete_post(post_id):
         ################### Auth check and case handling
         auth_header = request.headers.get("Authorization")
         if not auth_header:
@@ -602,17 +602,48 @@ def register_routes(app):
         if not post or post.deleted_at is not None:
             return jsonify({"error": "Poszt nem található"}), 404
 
-        # Csak a poszt szerzője törölheti
+        # Csak a poszt szerzője módosíthatja vagy törölheti
         if post.author_id != user_id:
-            return jsonify({"error": "Nincs jogosultságod a poszt törléséhez"}), 403
+            return jsonify({"error": "Nincs jogosultságod a poszt módosításához"}), 403
 
-        # Soft delete
-        post.deleted_at = datetime.now(timezone.utc)
-        db.session.commit()
+        if request.method == "PUT":
+            # Szerkesztés
+            data = request.get_json()
+            if not data:
+                return jsonify({"error": "Nincs JSON adat"}), 400
 
-        return jsonify({
-            "message": "Poszt sikeresen törölve"
-        }), 200
+            title = data.get("title")
+            content = data.get("content")
+
+            if not title or not content:
+                return jsonify({"error": "title és content kötelező"}), 400
+
+            post.title = title
+            post.content = content
+            post.updated_at = datetime.now(timezone.utc)
+            db.session.commit()
+
+            return jsonify({
+                "message": "Poszt sikeresen frissítve",
+                "post": {
+                    "id": post.id,
+                    "title": post.title,
+                    "content": post.content,
+                    "group_id": post.group_id,
+                    "author_id": post.author_id,
+                    "created_at": post.created_at.isoformat() if post.created_at else None,
+                    "updated_at": post.updated_at.isoformat() if post.updated_at else None,
+                }
+            }), 200
+
+        elif request.method == "DELETE":
+            # Soft delete
+            post.deleted_at = datetime.now(timezone.utc)
+            db.session.commit()
+
+            return jsonify({
+                "message": "Poszt sikeresen törölve"
+            }), 200
 
     @app.route("/posts/<int:post_id>/comments", methods=["POST", "OPTIONS"])
     def create_comment(post_id):

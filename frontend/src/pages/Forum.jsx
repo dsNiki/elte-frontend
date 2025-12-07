@@ -56,6 +56,11 @@ const Forum = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [postToDelete, setPostToDelete] = useState(null);
   const [deletingPost, setDeletingPost] = useState(false);
+  const [editPostDialogOpen, setEditPostDialogOpen] = useState(false);
+  const [postToEdit, setPostToEdit] = useState(null);
+  const [editingPostTitle, setEditingPostTitle] = useState("");
+  const [editingPostContent, setEditingPostContent] = useState("");
+  const [updatingPost, setUpdatingPost] = useState(false);
   const [deleteCommentDialogOpen, setDeleteCommentDialogOpen] = useState(false);
   const [commentToDelete, setCommentToDelete] = useState(null);
   const [deletingComment, setDeletingComment] = useState(false);
@@ -271,6 +276,49 @@ const Forum = () => {
   const cancelDeletePost = () => {
     setDeleteDialogOpen(false);
     setPostToDelete(null);
+  };
+
+  const handleEditPost = (post) => {
+    setPostToEdit(post);
+    setEditingPostTitle(post.title);
+    setEditingPostContent(post.content);
+    setEditPostDialogOpen(true);
+  };
+
+  const confirmEditPost = async () => {
+    if (!postToEdit || !editingPostTitle.trim() || !editingPostContent.trim()) {
+      return;
+    }
+
+    setUpdatingPost(true);
+    setError(null);
+
+    try {
+      await forumService.updatePost(
+        postToEdit.id,
+        editingPostTitle,
+        editingPostContent
+      );
+      setEditPostDialogOpen(false);
+      setPostToEdit(null);
+      setEditingPostTitle("");
+      setEditingPostContent("");
+      await fetchPosts();
+    } catch (err) {
+      console.error("Poszt szerkesztési hiba:", err);
+      setError(
+        err.response?.data?.error || "Hiba történt a poszt szerkesztése során"
+      );
+    } finally {
+      setUpdatingPost(false);
+    }
+  };
+
+  const cancelEditPost = () => {
+    setEditPostDialogOpen(false);
+    setPostToEdit(null);
+    setEditingPostTitle("");
+    setEditingPostContent("");
   };
 
   const handleDeleteComment = (comment, postId) => {
@@ -574,20 +622,36 @@ const Forum = () => {
                       </Box>
                     </Box>
                     {post.author_id === getCurrentUserId() && (
-                      <IconButton
-                        onClick={() => handleDeletePost(post)}
-                        sx={{
-                          color: "#d32f2f",
-                          "&:hover": {
-                            backgroundColor: "rgba(211, 47, 47, 0.1)",
-                            transform: "scale(1.1)",
-                          },
-                          transition: "all 0.2s",
-                        }}
-                        title="Poszt törlése"
-                      >
-                        <DeleteIcon />
-                      </IconButton>
+                      <Box sx={{ display: "flex", gap: 0.5 }}>
+                        <IconButton
+                          onClick={() => handleEditPost(post)}
+                          sx={{
+                            color: "#667eea",
+                            "&:hover": {
+                              backgroundColor: "rgba(102, 126, 234, 0.1)",
+                              transform: "scale(1.1)",
+                            },
+                            transition: "all 0.2s",
+                          }}
+                          title="Poszt szerkesztése"
+                        >
+                          <EditIcon />
+                        </IconButton>
+                        <IconButton
+                          onClick={() => handleDeletePost(post)}
+                          sx={{
+                            color: "#d32f2f",
+                            "&:hover": {
+                              backgroundColor: "rgba(211, 47, 47, 0.1)",
+                              transform: "scale(1.1)",
+                            },
+                            transition: "all 0.2s",
+                          }}
+                          title="Poszt törlése"
+                        >
+                          <DeleteIcon />
+                        </IconButton>
+                      </Box>
                     )}
                   </Box>
 
@@ -1086,6 +1150,80 @@ const Forum = () => {
               <CircularProgress size={20} color="inherit" />
             ) : (
               "Törlés"
+            )}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Edit Post Dialog */}
+      <Dialog
+        open={editPostDialogOpen}
+        onClose={cancelEditPost}
+        maxWidth="md"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: "24px",
+            boxShadow: "0 8px 32px rgba(102, 126, 234, 0.2)",
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            color: "white",
+            fontWeight: 600,
+            borderRadius: "24px 24px 0 0",
+          }}
+        >
+          Poszt szerkesztése
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
+          <TextField
+            fullWidth
+            label="Cím"
+            value={editingPostTitle}
+            onChange={(e) => setEditingPostTitle(e.target.value)}
+            sx={{ mb: 2 }}
+            required
+          />
+          <TextField
+            fullWidth
+            multiline
+            rows={6}
+            label="Tartalom"
+            value={editingPostContent}
+            onChange={(e) => setEditingPostContent(e.target.value)}
+            required
+          />
+        </DialogContent>
+        <DialogActions sx={{ p: 2 }}>
+          <Button
+            onClick={cancelEditPost}
+            disabled={updatingPost}
+            sx={{ color: "#666" }}
+          >
+            Mégse
+          </Button>
+          <Button
+            onClick={confirmEditPost}
+            variant="contained"
+            disabled={
+              updatingPost ||
+              !editingPostTitle.trim() ||
+              !editingPostContent.trim()
+            }
+            sx={{
+              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              "&:hover": {
+                background: "linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%)",
+              },
+            }}
+          >
+            {updatingPost ? (
+              <CircularProgress size={20} color="inherit" />
+            ) : (
+              "Mentés"
             )}
           </Button>
         </DialogActions>

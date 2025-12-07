@@ -175,6 +175,20 @@ const forumService = {
     return response.data;
   },
 
+  updatePost: async (postId, title, content) => {
+    const token = getAuthToken();
+    const response = await api.put(
+      `/posts/${postId}`,
+      { title, content },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data.post;
+  },
+
   deleteComment: async (commentId) => {
     const token = getAuthToken();
     const response = await api.delete(`/comments/${commentId}`, {
