@@ -29,8 +29,10 @@ import {
   People as PeopleIcon,
   Delete as DeleteIcon,
   Edit as EditIcon,
+  CalendarToday as CalendarIcon,
 } from "@mui/icons-material";
 import { groupService, forumService, authService } from "../services/api";
+import Calendar from "../components/Calendar/Calendar";
 import "./Dashboard.css";
 
 const Forum = () => {
@@ -68,6 +70,7 @@ const Forum = () => {
   const [commentToEdit, setCommentToEdit] = useState(null);
   const [editingCommentContent, setEditingCommentContent] = useState("");
   const [updatingComment, setUpdatingComment] = useState(false);
+  const [calendarModalOpen, setCalendarModalOpen] = useState(false);
 
   const fetchPosts = useCallback(async () => {
     if (!groupId) return;
@@ -492,6 +495,22 @@ const Forum = () => {
               {group?.subject || "Csoport forum"}
             </Typography>
           </Box>
+          <IconButton
+            onClick={() => setCalendarModalOpen(true)}
+            sx={{
+              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              color: "white",
+              "&:hover": {
+                background: "linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%)",
+                transform: "scale(1.05)",
+              },
+              transition: "transform 0.2s",
+              mr: 1,
+            }}
+            title="Naptár megtekintése"
+          >
+            <CalendarIcon />
+          </IconButton>
           <IconButton
             onClick={handleViewMembers}
             sx={{
@@ -1369,6 +1388,13 @@ const Forum = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Calendar Modal */}
+      <Calendar
+        open={calendarModalOpen}
+        onClose={() => setCalendarModalOpen(false)}
+        groupId={groupId}
+      />
     </div>
   );
 };

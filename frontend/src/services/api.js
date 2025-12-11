@@ -214,5 +214,56 @@ const forumService = {
   },
 };
 
-export { authService, groupService, forumService };
+// EVENT SERVICE
+const eventService = {
+  getEvents: async (groupId) => {
+    const token = getAuthToken();
+    const response = await api.get(`/groups/${groupId}/events`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data.events || [];
+  },
+
+  createEvent: async (groupId, title, date, description, location) => {
+    const token = getAuthToken();
+    const response = await api.post(
+      `/groups/${groupId}/events`,
+      { title, date, description, location },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data.event;
+  },
+
+  updateEvent: async (eventId, title, date, description, location) => {
+    const token = getAuthToken();
+    const response = await api.put(
+      `/events/${eventId}`,
+      { title, date, description, location },
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data.event;
+  },
+
+  deleteEvent: async (eventId) => {
+    const token = getAuthToken();
+    const response = await api.delete(`/events/${eventId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data;
+  },
+};
+
+export { authService, groupService, forumService, eventService };
 export default authService;
