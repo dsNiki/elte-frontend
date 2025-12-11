@@ -4,7 +4,7 @@ import bcrypt  # pyright: ignore[reportMissingImports]
 import jwt  # pyright: ignore[reportMissingImports]
 from datetime import datetime, timedelta, timezone
 from config import Config
-from models import db, User, Group, GroupMember, Post, Comment
+from models import db, User, Group, GroupMember, Post, Comment, Event
 
 
 # Email minta
@@ -52,7 +52,7 @@ def register_routes(app):
         major = data.get("major")  
         hobbies = data.get("hobbies", [])
         hobbies_str = ",".join(hobbies) if isinstance(hobbies, list) else str(hobbies)
-        avatar_url = data.get("avatar_url") 
+        avatar_url = data.get("avatar_url", None) 
 
         if not re.match(ELTE_EMAIL_REGEX, email):
             return jsonify({"message": "Csak ELTE-s email használható!"}), 400
@@ -797,3 +797,171 @@ def register_routes(app):
             return jsonify({
                 "message": "Komment sikeresen törölve"
             }), 200
+        
+
+
+
+    @app.route("/groups/<int:group_id>/events", methods=["GET"])
+    def list_events(group_id):
+        # 1. Autentikáció és Jogosultság Ellenőrzés
+        auth_header = request.headers.get("Authorization")
+        if not auth_header: return jsonify({"error": "Hiányzó token"}), 401
+        try:
+            token = auth_header.split(" ")[1]
+            decoded = verify_jwt_token(token)
+        except: return jsonify({"error": "Hibás token"}), 401
+        if not decoded: return jsonify({"error": "Érvénytelen vagy lejárt token"}), 401
+        user_id = decoded["user_id"]
+
+        # Csoport létezik-e és tag-e a felhasználó? (Csak tagok láthatják az eseményeket)
+        group = Group.query.get(group_id)
+        if not group: return jsonify({"error": "Csoport nem található"}), 404
+        
+        membership = GroupMember.query.filter_by(user_id=user_id, group_id=group_id).first()
+        if not membership: return jsonify({"error": "Nem vagy tagja a csoportnak"}), 403
+
+        # 2. Események lekérése szűréssel (opcionális: start/end dátum)
+        # Bár az Event modelled event_date-et használ, a naptár frontendek (pl. FullCalendar) 
+        # gyakran küldenek start és end paramétert a nézethez.
+        
+        # event_date az event_date_re szűrés
+        
+        events = (
+            Event.query
+            .filter_by(group_id=group_id, deleted_at=None)
+            .order_by(Event.event_date.asc())
+            .all()
+        )
+
+        events_json = [
+            {
+                "id": e.id,
+                "title": e.title,
+                "description": e.description,
+                # Fontos: event_date néven adjuk vissza, de ISO formátumban
+                "date": e.event_date.isoformat(), 
+                "location": e.location,
+                "creator_id": e.creator_id,
+                "group_id": e.group_id,
+            } 
+            for e in events
+        ]
+
+        return jsonify({"events": events_json}), 200
+
+
+    @app.route("/groups/<int:group_id>/events", methods=["POST"])
+    def create_event(group_id):
+        # Auth ellenőrzés (ugyanaz, mint fent)
+        auth_header = request.headers.get("Authorization")
+        if not auth_header: return jsonify({"error": "Hiányzó token"}), 401
+        try:
+            token = auth_header.split(" ")[1]
+            decoded = verify_jwt_token(token)
+        except: return jsonify({"error": "Hibás token"}), 401
+        if not decoded: return jsonify({"error": "Érvénytelen vagy lejárt token"}), 401
+        user_id = decoded["user_id"]
+
+        group = Group.query.get(group_id)
+        if not group: return jsonify({"error": "Csoport nem található"}), 404
+        membership = GroupMember.query.filter_by(user_id=user_id, group_id=group_id).first()
+        if not membership: return jsonify({"error": "Nem vagy tagja a csoportnak"}), 403
+        
+        data = request.get_json()
+        if not data: return jsonify({"error": "Nincs JSON adat"}), 400
+
+        title = data.get("title")
+        date_str = data.get("date") # Itt a frontend valószínűleg "date" vagy "event_date"-t küld
+        content = data.get("description")
+
+        if not title or not date_str:
+            return jsonify({"error": "title és date kötelező"}), 400
+
+        try:
+            # A datetime-ot a timezone-nal együtt kell kezelni
+            # datetime.fromisoformat nem kezeli a 'Z' végű UTC dátumokat, 
+            # ezért a .replace('Z', '+00:00') trükköt használjuk, ha szükséges.
+            event_dt = datetime.fromisoformat(date_str.replace('Z', '+00:00')).astimezone(timezone.utc)
+        except ValueError:
+            return jsonify({"error": "Hibás dátum formátum. Használd az ISO 8601 formátumot."}), 400
+        
+        
+        new_event = Event(
+            title=title,
+            description=content,
+            event_date=event_dt,
+            location=data.get("location"),
+            group_id=group_id,
+            creator_id=user_id, # Az aktuális user az event létrehozója
+            created_at=datetime.now(timezone.utc),
+        )
+
+        db.session.add(new_event)
+        db.session.commit()
+
+        return jsonify({
+            "message": "Esemény sikeresen létrehozva",
+            "event": {
+                "id": new_event.id,
+                "title": new_event.title,
+                "date": new_event.event_date.isoformat(),
+                "creator_id": new_event.creator_id,
+            }
+        }), 201
+
+    @app.route("/events/<int:event_id>", methods=["PUT", "DELETE"])
+    def update_or_delete_event(event_id):
+        # Auth ellenőrzés
+        auth_header = request.headers.get("Authorization")
+        if not auth_header: return jsonify({"error": "Hiányzó token"}), 401
+        try:
+            token = auth_header.split(" ")[1]
+            decoded = verify_jwt_token(token)
+        except: return jsonify({"error": "Hibás token"}), 401
+        if not decoded: return jsonify({"error": "Érvénytelen vagy lejárt token"}), 401
+        user_id = decoded["user_id"]
+
+        event = Event.query.get(event_id)
+        if not event or event.deleted_at is not None:
+            return jsonify({"error": "Esemény nem található"}), 404
+
+        # Csak az esemény létrehozója módosíthatja
+        if event.creator_id != user_id:
+            return jsonify({"error": "Nincs jogosultságod az esemény módosításához"}), 403
+
+        if request.method == "PUT":
+            data = request.get_json()
+            if not data: return jsonify({"error": "Nincs JSON adat"}), 400
+
+            # Frissítési logika
+            if "title" in data:
+                event.title = data["title"]
+            if "description" in data:
+                event.description = data["description"]
+            if "location" in data:
+                event.location = data["location"]
+            if "date" in data:
+                try:
+                    event_dt = datetime.fromisoformat(data["date"].replace('Z', '+00:00')).astimezone(timezone.utc)
+                    event.event_date = event_dt
+                except ValueError:
+                    return jsonify({"error": "Hibás dátum formátum"}), 400
+
+            event.updated_at = datetime.now(timezone.utc)
+            db.session.commit()
+
+            return jsonify({
+                "message": "Esemény sikeresen frissítve",
+                "event": {
+                    "id": event.id,
+                    "title": event.title,
+                    "date": event.event_date.isoformat(),
+                }
+            }), 200
+
+        elif request.method == "DELETE":
+            # Soft delete
+            event.deleted_at = datetime.now(timezone.utc)
+            db.session.commit()
+
+            return jsonify({"message": "Esemény sikeresen törölve"}), 200
