@@ -1168,55 +1168,6 @@ const Dashboard = () => {
             <Divider sx={{ my: 2 }} />
 
             <Box sx={{ mb: 3 }}>
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <Box>
-                  <Typography variant="body2" color="text.secondary" gutterBottom>
-                    Toast értesítések
-                  </Typography>
-                  <Typography
-                    variant="caption"
-                    color="text.secondary"
-                    sx={{ fontSize: "0.7rem" }}
-                  >
-                    Értesítések új posztokról
-                  </Typography>
-                </Box>
-                <Button
-                  onClick={handleToggleToastNotifications}
-                  variant={toastNotificationsEnabled ? "contained" : "outlined"}
-                  sx={{
-                    minWidth: 100,
-                    borderRadius: "20px",
-                    background: toastNotificationsEnabled
-                      ? "linear-gradient(135deg, #4caf50 0%, #388e3c 100%)"
-                      : "transparent",
-                    color: toastNotificationsEnabled ? "white" : "#667eea",
-                    borderColor: toastNotificationsEnabled
-                      ? "#4caf50"
-                      : "#667eea",
-                    textTransform: "none",
-                    fontWeight: 600,
-                    "&:hover": {
-                      background: toastNotificationsEnabled
-                        ? "linear-gradient(135deg, #388e3c 0%, #2e7d32 100%)"
-                        : "rgba(102, 126, 234, 0.1)",
-                    },
-                  }}
-                >
-                  {toastNotificationsEnabled ? "Bekapcsolva" : "Kikapcsolva"}
-                </Button>
-              </Box>
-            </Box>
-
-            <Divider sx={{ my: 2 }} />
-
-            <Box sx={{ mb: 3 }}>
               <Typography variant="body2" color="text.secondary" gutterBottom>
                 Hobbik
               </Typography>
@@ -1264,6 +1215,56 @@ const Dashboard = () => {
                   Nincs megadva hobbi
                 </Typography>
               )}
+            </Box>
+
+            <Divider sx={{ my: 3 }} />
+
+            <Box sx={{ mb: 3 }}>
+              <Typography
+                variant="subtitle2"
+                sx={{
+                  fontWeight: 600,
+                  color: "#667eea",
+                  mb: 2,
+                }}
+              >
+                Beállítások
+              </Typography>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                }}
+              >
+                <Typography variant="body2" color="text.secondary">
+                  Felugró értesítések
+                </Typography>
+                <Button
+                  onClick={handleToggleToastNotifications}
+                  variant={toastNotificationsEnabled ? "contained" : "outlined"}
+                  sx={{
+                    minWidth: 100,
+                    borderRadius: "20px",
+                    background: toastNotificationsEnabled
+                      ? "linear-gradient(135deg, #4caf50 0%, #388e3c 100%)"
+                      : "transparent",
+                    color: toastNotificationsEnabled ? "white" : "#667eea",
+                    borderColor: toastNotificationsEnabled
+                      ? "#4caf50"
+                      : "#667eea",
+                    textTransform: "none",
+                    fontWeight: 600,
+                    "&:hover": {
+                      background: toastNotificationsEnabled
+                        ? "linear-gradient(135deg, #388e3c 0%, #2e7d32 100%)"
+                        : "rgba(102, 126, 234, 0.1)",
+                    },
+                  }}
+                >
+                  {toastNotificationsEnabled ? "Bekapcsolva" : "Kikapcsolva"}
+                </Button>
+              </Box>
             </Box>
           </Box>
         </DialogContent>
