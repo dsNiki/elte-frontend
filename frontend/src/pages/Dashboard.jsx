@@ -26,6 +26,7 @@ import {
   Add as AddIcon,
   Logout as LogoutIcon,
   People as PeopleIcon,
+  Settings as SettingsIcon,
 } from "@mui/icons-material";
 import { logout } from "../redux/slices/authSlice";
 import authService, { groupService } from "../services/api";
@@ -61,6 +62,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [joinGroupModalOpen, setJoinGroupModalOpen] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState("");
   const [groups, setGroups] = useState([]);
@@ -492,6 +494,29 @@ const Dashboard = () => {
             }}
           >
             Saját csoportok
+          </Button>
+          <Button
+            onClick={() => setSettingsModalOpen(true)}
+            variant="outlined"
+            sx={{
+              ml: 1,
+              mr: 1,
+              borderRadius: "999px",
+              px: 3,
+              py: 1,
+              fontWeight: 600,
+              textTransform: "none",
+              borderColor: "#667eea",
+              color: "#667eea",
+              "&:hover": {
+                background: "rgba(102, 126, 234, 0.1)",
+                borderColor: "#667eea",
+                transform: "translateY(-1px)",
+              },
+            }}
+            startIcon={<SettingsIcon sx={{ fontSize: 20 }} />}
+          >
+            Beállítások
           </Button>
           <Button
             onClick={handleAddButton}
@@ -1216,30 +1241,95 @@ const Dashboard = () => {
                 </Typography>
               )}
             </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button
+            onClick={handleCloseProfileModal}
+            variant="contained"
+            sx={{
+              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              borderRadius: "12px",
+              px: 3,
+              py: 1,
+              fontWeight: 600,
+              boxShadow: "0 4px 15px rgba(102, 126, 234, 0.3)",
+              "&:hover": {
+                background: "linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%)",
+                boxShadow: "0 6px 20px rgba(102, 126, 234, 0.4)",
+              },
+            }}
+          >
+            Bezárás
+          </Button>
+        </DialogActions>
+      </Dialog>
 
-            <Divider sx={{ my: 3 }} />
-
+      {/* Beállítások Modal */}
+      <Dialog
+        open={settingsModalOpen}
+        onClose={() => setSettingsModalOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: "24px",
+            background: "rgba(255, 255, 255, 1)",
+            boxShadow: "0 8px 32px rgba(102, 126, 234, 0.2)",
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            color: "white",
+            borderRadius: "24px 24px 0 0",
+            pb: 2,
+          }}
+        >
+          <Box display="flex" alignItems="center" gap={2}>
+            <SettingsIcon sx={{ fontSize: 28 }} />
+            <Typography variant="h5" component="div" sx={{ fontWeight: 700 }}>
+              Beállítások
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
             <Box sx={{ mb: 3 }}>
               <Typography
-                variant="subtitle2"
+                variant="subtitle1"
                 sx={{
                   fontWeight: 600,
-                  color: "#667eea",
+                  color: "#333",
                   mb: 2,
                 }}
               >
-                Beállítások
+                Értesítések
               </Typography>
               <Box
                 sx={{
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
+                  p: 2,
+                  borderRadius: "12px",
+                  background: "rgba(102, 126, 234, 0.05)",
+                  border: "1px solid rgba(102, 126, 234, 0.1)",
                 }}
               >
-                <Typography variant="body2" color="text.secondary">
-                  Felugró értesítések
-                </Typography>
+                <Box>
+                  <Typography variant="body1" sx={{ fontWeight: 500, mb: 0.5 }}>
+                    Felugró értesítések
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ fontSize: "0.75rem" }}
+                  >
+                    Értesítések új posztokról
+                  </Typography>
+                </Box>
                 <Button
                   onClick={handleToggleToastNotifications}
                   variant={toastNotificationsEnabled ? "contained" : "outlined"}
@@ -1270,7 +1360,7 @@ const Dashboard = () => {
         </DialogContent>
         <DialogActions sx={{ p: 3 }}>
           <Button
-            onClick={handleCloseProfileModal}
+            onClick={() => setSettingsModalOpen(false)}
             variant="contained"
             sx={{
               background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
