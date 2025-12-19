@@ -20,11 +20,15 @@ import {
   CircularProgress,
   Alert,
   IconButton,
+  Snackbar,
+  Tooltip,
 } from "@mui/material";
 import {
   Add as AddIcon,
   Logout as LogoutIcon,
   People as PeopleIcon,
+  Settings as SettingsIcon,
+  Search as SearchIcon,
 } from "@mui/icons-material";
 import { logout } from "../redux/slices/authSlice";
 import authService, { groupService } from "../services/api";
@@ -60,6 +64,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { user } = useSelector((state) => state.auth);
   const [profileModalOpen, setProfileModalOpen] = useState(false);
+  const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [joinGroupModalOpen, setJoinGroupModalOpen] = useState(false);
   const [selectedSubject, setSelectedSubject] = useState("");
   const [groups, setGroups] = useState([]);
@@ -72,6 +77,14 @@ const Dashboard = () => {
   const [myGroups, setMyGroups] = useState([]);
   const [myGroupsLoading, setMyGroupsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("home");
+  const [unreadCounts, setUnreadCounts] = useState({});
+  const [toastOpen, setToastOpen] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
+  const [toastNotificationsEnabled, setToastNotificationsEnabled] = useState(() => {
+    // Alapértelmezetten bekapcsolva, kivéve ha korábban kikapcsolták
+    const saved = localStorage.getItem("toastNotificationsEnabled");
+    return saved === null ? true : saved === "true";
+  });
 
   useEffect(() => {
     const fetchMyGroups = async () => {
@@ -89,6 +102,60 @@ const Dashboard = () => {
   }, []);
 
   useEffect(() => {
+    const fetchUnreadCounts = async () => {
+      try {
+        const counts = await groupService.getUnreadPostCounts();
+
+        // Összehasonlítjuk az előző értékekkel, hogy észleljük az új posztokat
+        setUnreadCounts((prevCounts) => {
+          if (Object.keys(prevCounts).length > 0) {
+            const newPostsGroups = [];
+
+            // Végigmegyünk az összes csoporton
+            for (const groupId in counts) {
+              const currentCount = counts[groupId] || 0;
+              const previousCount = prevCounts[groupId] || 0;
+
+              // Ha nőtt az olvasatlan posztok száma
+              if (currentCount > previousCount) {
+                const group = myGroups.find((g) => g.id === parseInt(groupId));
+                if (group) {
+                  const newPostsCount = currentCount - previousCount;
+                  newPostsGroups.push({
+                    groupName: group.name,
+                    count: newPostsCount,
+                  });
+                }
+              }
+            }
+
+            // Ha van új poszt ÉS a toast értesítések be vannak kapcsolva, toast üzenetet mutatunk
+            if (newPostsGroups.length > 0 && toastNotificationsEnabled) {
+              // Csak az első csoportot mutatjuk egyszerre
+              const firstGroup = newPostsGroups[0];
+              setToastMessage(
+                `${firstGroup.count} új poszt a "${firstGroup.groupName}" csoportban`
+              );
+              setToastOpen(true);
+            }
+          }
+
+          return counts;
+        });
+      } catch (err) {
+        console.error("Olvasatlan posztok száma hiba:", err);
+      }
+    };
+
+    fetchUnreadCounts();
+    
+    // Real-time polling: 5 másodpercenként ellenőrzi az új posztokat
+    const interval = setInterval(fetchUnreadCounts, 5000);
+    
+    return () => clearInterval(interval);
+  }, [activeTab, myGroups, toastNotificationsEnabled]);
+
+  useEffect(() => {
     if (activeTab === "my") {
       const fetchMyGroups = async () => {
         setMyGroupsLoading(true);
@@ -104,6 +171,60 @@ const Dashboard = () => {
       fetchMyGroups();
     }
   }, [activeTab]);
+
+  // Frissítjük az olvasatlan számokat, amikor a felhasználó visszatér a dashboardra
+  useEffect(() => {
+    const handleFocus = () => {
+      const fetchUnreadCounts = async () => {
+        try {
+          const counts = await groupService.getUnreadPostCounts();
+
+          // Összehasonlítjuk az előző értékekkel
+          setUnreadCounts((prevCounts) => {
+            if (Object.keys(prevCounts).length > 0) {
+              const newPostsGroups = [];
+
+              for (const groupId in counts) {
+                const currentCount = counts[groupId] || 0;
+                const previousCount = prevCounts[groupId] || 0;
+
+                if (currentCount > previousCount) {
+                  const group = myGroups.find(
+                    (g) => g.id === parseInt(groupId)
+                  );
+                  if (group) {
+                    const newPostsCount = currentCount - previousCount;
+                    newPostsGroups.push({
+                      groupName: group.name,
+                      count: newPostsCount,
+                    });
+                  }
+                }
+              }
+
+              // Csak akkor mutatunk toast üzenetet, ha be van kapcsolva ÉS van új poszt
+              if (newPostsGroups.length > 0 && toastNotificationsEnabled) {
+                // Csak az első csoportot mutatjuk egyszerre
+                const firstGroup = newPostsGroups[0];
+                setToastMessage(
+                  `${firstGroup.count} új poszt a "${firstGroup.groupName}" csoportban`
+                );
+                setToastOpen(true);
+              }
+            }
+
+            return counts;
+          });
+        } catch (err) {
+          console.error("Olvasatlan posztok száma hiba:", err);
+        }
+      };
+      fetchUnreadCounts();
+    };
+
+    window.addEventListener("focus", handleFocus);
+    return () => window.removeEventListener("focus", handleFocus);
+  }, [myGroups, toastNotificationsEnabled]);
 
   useEffect(() => {
     const token = localStorage.getItem("authToken");
@@ -268,6 +389,13 @@ const Dashboard = () => {
     setSelectedGroupName("");
   };
 
+  // Toast értesítések be/kikapcsolása
+  const handleToggleToastNotifications = () => {
+    const newValue = !toastNotificationsEnabled;
+    setToastNotificationsEnabled(newValue);
+    localStorage.setItem("toastNotificationsEnabled", String(newValue));
+  };
+
   return (
     <div className="dashboard-container">
       <nav className="dashboard-nav">
@@ -294,16 +422,16 @@ const Dashboard = () => {
           >
             {getInitials(user?.name)}
           </Avatar>
-          {/* HOME GOMB - Saját csoportok ELŐTT */}
+          {/* Sorrend: Kezdőlap → Saját csoportok → Keresés → Beállítások → Kijelentkezés */}
           <Button
             onClick={() => setActiveTab("home")}
             variant={activeTab === "home" ? "contained" : "outlined"}
             sx={{
-              ml: 2,
-              mr: 1,
+              ml: 2.5,
+              mr: 0.5,
               borderRadius: "999px",
-              px: 3,
-              py: 1,
+              px: 2.5,
+              py: 0.75,
               fontWeight: 600,
               textTransform: "none",
               background:
@@ -333,30 +461,26 @@ const Dashboard = () => {
             onClick={() => setActiveTab("my")}
             variant={activeTab === "my" ? "contained" : "outlined"}
             sx={{
-              ml: 1,
-              mr: 1,
+              ml: 0.5,
+              mr: 0.5,
               borderRadius: "999px",
-              px: 3.5,
-              py: 1,
+              px: 2.5,
+              py: 0.75,
               fontWeight: 600,
               textTransform: "none",
-              minWidth: 120,
-
               background:
                 activeTab === "my"
                   ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
                   : "transparent",
               color: activeTab === "my" ? "#ffffff" : "#667eea",
-
               borderColor: activeTab === "my" ? "#667eea" : "#667eea",
               boxShadow:
                 activeTab === "my"
                   ? "0 4px 15px rgba(102, 126, 234, 0.3)"
                   : "none",
-
               "&:hover": {
                 background:
-                  activeTab === "search"
+                  activeTab === "my"
                     ? "linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%)"
                     : "rgba(102, 126, 234, 0.08)",
                 boxShadow:
@@ -369,60 +493,67 @@ const Dashboard = () => {
           >
             Saját csoportok
           </Button>
-          <Button
-            onClick={handleAddButton}
-            variant={activeTab === "search" ? "contained" : "outlined"}
-            sx={{
-              ml: 1,
-              mr: 1,
-              borderRadius: "999px", // ovális
-              px: 3.5,
-              py: 1,
-              fontWeight: 600,
-              textTransform: "none",
-              minWidth: 120,
 
-              // AKTÍV (kék háttér)
-              background:
-                activeTab === "search"
-                  ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
-                  : "transparent",
-              color: activeTab === "search" ? "#ffffff" : "#667eea",
-
-              borderColor: activeTab === "search" ? "#667eea" : "#667eea",
-              boxShadow:
-                activeTab === "search"
-                  ? "0 4px 15px rgba(102, 126, 234, 0.3)"
-                  : "none",
-
-              "&:hover": {
+          <Tooltip title="Csoport keresése">
+            <IconButton
+              onClick={handleAddButton}
+              sx={{
+                ml: 0.5,
+                mr: 0.5,
+                color: activeTab === "search" ? "#ffffff" : "#667eea",
                 background:
                   activeTab === "search"
-                    ? "linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%)"
-                    : "rgba(102, 126, 234, 0.08)",
+                    ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+                    : "transparent",
+                border: activeTab === "search" ? "none" : "1px solid #667eea",
+                borderRadius: "50%",
+                "&:hover": {
+                  background:
+                    activeTab === "search"
+                      ? "linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%)"
+                      : "rgba(102, 126, 234, 0.1)",
+                  transform: "scale(1.1)",
+                },
+                transition: "all 0.2s",
                 boxShadow:
                   activeTab === "search"
-                    ? "0 6px 20px rgba(102, 126, 234, 0.4)"
-                    : "0 2px 8px rgba(102, 126, 234, 0.2)",
-                transform: "translateY(-1px)",
-              },
-            }}
-            startIcon={<AddIcon sx={{ fontSize: 20 }} />}
-          >
-            Keresés
-          </Button>
+                    ? "0 4px 15px rgba(102, 126, 234, 0.3)"
+                    : "none",
+              }}
+            >
+              <SearchIcon />
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip title="Beállítások">
+            <IconButton
+              onClick={() => setSettingsModalOpen(true)}
+              sx={{
+                ml: 0.5,
+                mr: 0.5,
+                color: "#667eea",
+                "&:hover": {
+                  background: "rgba(102, 126, 234, 0.1)",
+                  transform: "scale(1.1)",
+                },
+                transition: "all 0.2s",
+              }}
+            >
+              <SettingsIcon />
+            </IconButton>
+          </Tooltip>
           <Button
             onClick={handleLogout}
             variant="contained"
             startIcon={<LogoutIcon />}
             sx={{
-              ml: 1,
+              ml: 0.5,
               mr: 1,
               borderRadius: "999px",
               background: "linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%)",
               color: "white",
-              px: 3.5,
-              py: 1,
+              px: 2.5,
+              py: 0.75,
               fontWeight: 600,
               boxShadow: "0 4px 15px rgba(255, 107, 107, 0.3)",
               transition: "all 0.3s ease",
@@ -870,66 +1001,94 @@ const Dashboard = () => {
                   <Box
                     sx={{ display: "flex", flexDirection: "column", gap: 2 }}
                   >
-                    {myGroups.map((group) => (
-                      <Card
-                        key={group.id}
-                        onClick={() => navigate(`/forum/${group.id}`)}
-                        sx={{
-                          borderRadius: "20px",
-                          border: "1px solid rgba(76, 175, 80, 0.3)",
-                          boxShadow: "0 4px 20px rgba(76, 175, 80, 0.1)",
-                          cursor: "pointer",
-                          transition: "all 0.3s ease",
-                          "&:hover": {
-                            boxShadow: "0 8px 32px rgba(76, 175, 80, 0.2)",
-                            transform: "translateY(-2px)",
-                            borderColor: "rgba(76, 175, 80, 0.5)",
-                          },
-                        }}
-                      >
-                        <CardContent sx={{ p: 3 }}>
-                          <Box
-                            display="flex"
-                            justifyContent="space-between"
-                            alignItems="center"
-                          >
-                            <Box flex={1}>
-                              <Typography
-                                variant="h6"
-                                sx={{ fontWeight: 700, color: "#2e7d32" }}
-                              >
-                                {group.name}
-                              </Typography>
-                              <Typography
-                                variant="body2"
-                                color="text.secondary"
-                              >
-                                {group.subject} • Csatlakoztál:{" "}
-                                {new Date(group.joined_at).toLocaleDateString(
-                                  "hu-HU"
-                                )}
-                              </Typography>
-                              {group.description && (
+                    {myGroups.map((group) => {
+                      const unreadCount = unreadCounts[group.id] || 0;
+                      return (
+                        <Card
+                          key={group.id}
+                          onClick={() => navigate(`/forum/${group.id}`)}
+                          sx={{
+                            borderRadius: "20px",
+                            border: "1px solid rgba(76, 175, 80, 0.3)",
+                            boxShadow: "0 4px 20px rgba(76, 175, 80, 0.1)",
+                            cursor: "pointer",
+                            transition: "all 0.3s ease",
+                            position: "relative",
+                            "&:hover": {
+                              boxShadow: "0 8px 32px rgba(76, 175, 80, 0.2)",
+                              transform: "translateY(-2px)",
+                              borderColor: "rgba(76, 175, 80, 0.5)",
+                            },
+                          }}
+                        >
+                          <CardContent sx={{ p: 3 }}>
+                            <Box
+                              display="flex"
+                              justifyContent="space-between"
+                              alignItems="center"
+                            >
+                              <Box flex={1}>
+                                <Box display="flex" alignItems="center" gap={1}>
+                                  <Typography
+                                    variant="h6"
+                                    sx={{ fontWeight: 700, color: "#2e7d32" }}
+                                  >
+                                    {group.name}
+                                  </Typography>
+                                  {unreadCount > 0 && (
+                                    <Box
+                                      sx={{
+                                        minWidth: 24,
+                                        height: 24,
+                                        borderRadius: "12px",
+                                        background:
+                                          "linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%)",
+                                        color: "white",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        fontSize: "0.75rem",
+                                        fontWeight: 700,
+                                        px: 0.75,
+                                        boxShadow:
+                                          "0 2px 8px rgba(255, 107, 107, 0.4)",
+                                      }}
+                                    >
+                                      {unreadCount > 99 ? "99+" : unreadCount}
+                                    </Box>
+                                  )}
+                                </Box>
                                 <Typography
                                   variant="body2"
-                                  sx={{ mt: 1, fontStyle: "italic" }}
+                                  color="text.secondary"
                                 >
-                                  {group.description}
+                                  {group.subject} • Csatlakoztál:{" "}
+                                  {new Date(group.joined_at).toLocaleDateString(
+                                    "hu-HU"
+                                  )}
                                 </Typography>
-                              )}
+                                {group.description && (
+                                  <Typography
+                                    variant="body2"
+                                    sx={{ mt: 1, fontStyle: "italic" }}
+                                  >
+                                    {group.description}
+                                  </Typography>
+                                )}
+                              </Box>
+                              <IconButton
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleViewMembers(group.id, group.name);
+                                }}
+                              >
+                                <PeopleIcon />
+                              </IconButton>
                             </Box>
-                            <IconButton
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleViewMembers(group.id, group.name);
-                              }}
-                            >
-                              <PeopleIcon />
-                            </IconButton>
-                          </Box>
-                        </CardContent>
-                      </Card>
-                    ))}
+                          </CardContent>
+                        </Card>
+                      );
+                    })}
                   </Box>
                 </Box>
               )
@@ -1015,8 +1174,6 @@ const Dashboard = () => {
 
             <Divider sx={{ my: 2 }} />
 
-            <Divider sx={{ my: 2 }} />
-
             <Box sx={{ mb: 3 }}>
               <Typography variant="body2" color="text.secondary" gutterBottom>
                 Hobbik
@@ -1071,6 +1228,121 @@ const Dashboard = () => {
         <DialogActions sx={{ p: 3 }}>
           <Button
             onClick={handleCloseProfileModal}
+            variant="contained"
+            sx={{
+              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+              borderRadius: "12px",
+              px: 3,
+              py: 1,
+              fontWeight: 600,
+              boxShadow: "0 4px 15px rgba(102, 126, 234, 0.3)",
+              "&:hover": {
+                background: "linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%)",
+                boxShadow: "0 6px 20px rgba(102, 126, 234, 0.4)",
+              },
+            }}
+          >
+            Bezárás
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Beállítások Modal */}
+      <Dialog
+        open={settingsModalOpen}
+        onClose={() => setSettingsModalOpen(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: {
+            borderRadius: "24px",
+            background: "rgba(255, 255, 255, 1)",
+            boxShadow: "0 8px 32px rgba(102, 126, 234, 0.2)",
+          },
+        }}
+      >
+        <DialogTitle
+          sx={{
+            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            color: "white",
+            borderRadius: "24px 24px 0 0",
+            pb: 2,
+          }}
+        >
+          <Box display="flex" alignItems="center" gap={2}>
+            <SettingsIcon sx={{ fontSize: 28 }} />
+            <Typography variant="h5" component="div" sx={{ fontWeight: 700 }}>
+              Beállítások
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            <Box sx={{ mb: 3 }}>
+              <Typography
+                variant="subtitle1"
+                sx={{
+                  fontWeight: 600,
+                  color: "#333",
+                  mb: 2,
+                }}
+              >
+                Értesítések
+              </Typography>
+              <Box
+                sx={{
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  p: 2,
+                  borderRadius: "12px",
+                  background: "rgba(102, 126, 234, 0.05)",
+                  border: "1px solid rgba(102, 126, 234, 0.1)",
+                }}
+              >
+                <Box>
+                  <Typography variant="body1" sx={{ fontWeight: 500, mb: 0.5 }}>
+                    Felugró értesítések
+                  </Typography>
+                  <Typography
+                    variant="caption"
+                    color="text.secondary"
+                    sx={{ fontSize: "0.75rem" }}
+                  >
+                    Értesítések új posztokról
+                  </Typography>
+                </Box>
+                <Button
+                  onClick={handleToggleToastNotifications}
+                  variant={toastNotificationsEnabled ? "contained" : "outlined"}
+                  sx={{
+                    minWidth: 100,
+                    borderRadius: "20px",
+                    background: toastNotificationsEnabled
+                      ? "linear-gradient(135deg, #4caf50 0%, #388e3c 100%)"
+                      : "transparent",
+                    color: toastNotificationsEnabled ? "white" : "#667eea",
+                    borderColor: toastNotificationsEnabled
+                      ? "#4caf50"
+                      : "#667eea",
+                    textTransform: "none",
+                    fontWeight: 600,
+                    "&:hover": {
+                      background: toastNotificationsEnabled
+                        ? "linear-gradient(135deg, #388e3c 0%, #2e7d32 100%)"
+                        : "rgba(102, 126, 234, 0.1)",
+                    },
+                  }}
+                >
+                  {toastNotificationsEnabled ? "Bekapcsolva" : "Kikapcsolva"}
+                </Button>
+              </Box>
+            </Box>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 3 }}>
+          <Button
+            onClick={() => setSettingsModalOpen(false)}
             variant="contained"
             sx={{
               background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
@@ -1344,6 +1616,37 @@ const Dashboard = () => {
           </Box>
         </Box>
       </footer>
+
+      {/* Toast üzenet új posztokhoz */}
+      <Snackbar
+        open={toastOpen}
+        autoHideDuration={6000}
+        onClose={() => setToastOpen(false)}
+        anchorOrigin={{ vertical: "top", horizontal: "right" }}
+        sx={{
+          mt: 8,
+        }}
+      >
+        <Alert
+          onClose={() => setToastOpen(false)}
+          severity="info"
+          sx={{
+            width: "100%",
+            background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+            color: "white",
+            "& .MuiAlert-icon": {
+              color: "white",
+            },
+            boxShadow: "0 4px 20px rgba(102, 126, 234, 0.3)",
+            borderRadius: "12px",
+          }}
+        >
+          <Typography sx={{ fontWeight: 600, mb: 0.5 }}>
+            Új poszt érkezett!
+          </Typography>
+          <Typography variant="body2">{toastMessage}</Typography>
+        </Alert>
+      </Snackbar>
     </div>
   );
 };

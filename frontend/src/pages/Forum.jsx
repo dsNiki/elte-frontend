@@ -112,6 +112,14 @@ const Forum = () => {
           }
           // Posztok betöltése
           await fetchPosts();
+          
+          // Jelöljük meg a posztokat olvasottnak, amikor a felhasználó megnyitja a fórumot
+          try {
+            await groupService.markGroupPostsRead(groupId);
+          } catch (err) {
+            console.error("Posztok olvasottnak jelölési hiba:", err);
+            // Nem kritikus hiba, nem dobjuk el a folyamatot
+          }
         } else {
           setShouldRedirect(true);
         }

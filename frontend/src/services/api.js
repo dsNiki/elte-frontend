@@ -113,6 +113,26 @@ const groupService = {
     });
     return response.data.members;
   },
+
+  getUnreadPostCounts: async () => {
+    const token = getAuthToken();
+    const response = await api.get("/groups/unread-counts", {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data.unread_counts || {};
+  },
+
+  markGroupPostsRead: async (groupId) => {
+    const token = getAuthToken();
+    const response = await api.post(`/groups/${groupId}/mark-posts-read`, {}, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data;
+  },
 };
 
 // FORUM SERVICE

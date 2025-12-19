@@ -4,7 +4,7 @@ import bcrypt  # pyright: ignore[reportMissingImports]
 import jwt  # pyright: ignore[reportMissingImports]
 from datetime import datetime, timedelta, timezone
 from config import Config
-from models import db, User, Group, GroupMember, Post, Comment, Event
+from models import db, User, Group, GroupMember, Post, Comment, Event, PostView
 
 
 # Email minta
@@ -965,3 +965,103 @@ def register_routes(app):
             db.session.commit()
 
             return jsonify({"message": "Esemény sikeresen törölve"}), 200
+
+    @app.route("/groups/unread-counts", methods=["GET"])
+    def get_unread_post_counts():
+        """Visszaadja az olvasatlan posztok számát csoportonként"""
+        auth_header = request.headers.get("Authorization")
+        if not auth_header:
+            return jsonify({"error": "Hiányzó token"}), 401
+
+        try:
+            token = auth_header.split(" ")[1]
+            decoded = verify_jwt_token(token)
+        except:
+            return jsonify({"error": "Hibás token"}), 401
+
+        if not decoded:
+            return jsonify({"error": "Érvénytelen vagy lejárt token"}), 401
+
+        user_id = decoded["user_id"]
+
+        # A user összes csoportja
+        memberships = GroupMember.query.filter_by(user_id=user_id).all()
+        
+        unread_counts = {}
+        
+        for membership in memberships:
+            group_id = membership.group_id
+            
+            # A csoport összes posztja (nem törölt, és a user csatlakozása után készült)
+            # KIZÁRJUK azokat a posztokat, amelyeket a felhasználó írt (author_id == user_id)
+            all_posts = (
+                Post.query
+                .filter_by(group_id=group_id, deleted_at=None)
+                .filter(Post.created_at >= membership.joined_at)
+                .filter(Post.author_id != user_id)  # A saját posztjai ne számolódjanak
+                .all()
+            )
+            
+            # A user által már megtekintett posztok
+            viewed_post_ids = {
+                pv.post_id for pv in PostView.query.filter_by(user_id=user_id).all()
+            }
+            
+            # Olvasatlan posztok száma (amit még nem látott)
+            unread_count = sum(1 for post in all_posts if post.id not in viewed_post_ids)
+            
+            unread_counts[group_id] = unread_count
+        
+        return jsonify({"unread_counts": unread_counts}), 200
+
+    @app.route("/groups/<int:group_id>/mark-posts-read", methods=["POST"])
+    def mark_group_posts_read(group_id):
+        """Jelöli meg a csoport összes posztját olvasottnak a felhasználó számára"""
+        auth_header = request.headers.get("Authorization")
+        if not auth_header:
+            return jsonify({"error": "Hiányzó token"}), 401
+
+        try:
+            token = auth_header.split(" ")[1]
+            decoded = verify_jwt_token(token)
+        except:
+            return jsonify({"error": "Hibás token"}), 401
+
+        if not decoded:
+            return jsonify({"error": "Érvénytelen vagy lejárt token"}), 401
+
+        user_id = decoded["user_id"]
+
+        # Ellenőrizzük, hogy a user tagja-e a csoportnak
+        membership = GroupMember.query.filter_by(
+            user_id=user_id, group_id=group_id
+        ).first()
+        if not membership:
+            return jsonify({"error": "Nem vagy tagja a csoportnak"}), 403
+
+        # A csoport összes posztja (nem törölt)
+        posts = Post.query.filter_by(group_id=group_id, deleted_at=None).all()
+        
+        # Már megtekintett posztok ID-i
+        existing_views = PostView.query.filter_by(user_id=user_id).all()
+        viewed_post_ids = {pv.post_id for pv in existing_views}
+        
+        # Új PostView rekordok létrehozása azokhoz a posztokhoz, amiket még nem látott
+        new_views = []
+        for post in posts:
+            if post.id not in viewed_post_ids:
+                post_view = PostView(
+                    user_id=user_id,
+                    post_id=post.id,
+                    viewed_at=datetime.now(timezone.utc)
+                )
+                new_views.append(post_view)
+        
+        if new_views:
+            db.session.add_all(new_views)
+            db.session.commit()
+        
+        return jsonify({
+            "message": "Posztok sikeresen olvasottnak jelölve",
+            "marked_count": len(new_views)
+        }), 200

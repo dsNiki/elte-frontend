@@ -131,6 +131,22 @@ class Comment(db.Model):
         return f"<Comment ID:{self.id}>"
 
 
+class PostView(db.Model):
+    __tablename__ = 'post_views'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False, index=True)
+    post_id = db.Column(db.Integer, db.ForeignKey('posts.id'), nullable=False, index=True)
+    
+    viewed_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    
+    # Unique constraint: egy user csak egyszer jelölheti meg egy posztot olvasottnak
+    __table_args__ = (db.UniqueConstraint('user_id', 'post_id', name='unique_user_post_view'),)
+    
+    def __repr__(self):
+        return f"<PostView User:{self.user_id} Post:{self.post_id}>"
+
+
 class Notification(db.Model):
     __tablename__ = 'notifications'
     
