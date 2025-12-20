@@ -285,5 +285,36 @@ const eventService = {
   },
 };
 
-export { authService, groupService, forumService, eventService };
+// SUBJECT SERVICE
+const subjectService = {
+  searchSubjects: async (query, year = "2025-2026-1") => {
+    const token = getAuthToken();
+    const response = await api.get(
+      `/subjects/search?q=${encodeURIComponent(query)}&year=${encodeURIComponent(year)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data; // [{ code, name }]
+  },
+
+  getGroupsBySubjectName: async (name) => {
+    const token = getAuthToken();
+    const response = await api.get(
+      `/groups/by-subject?name=${encodeURIComponent(name)}`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    return response.data; // [{ id, name, subject, ... }]
+  },
+};
+
+
+
+export { authService, groupService, forumService, eventService, subjectService };
 export default authService;

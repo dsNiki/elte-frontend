@@ -5,6 +5,11 @@ import jwt  # pyright: ignore[reportMissingImports]
 from datetime import datetime, timedelta, timezone
 from config import Config
 from models import db, User, Group, GroupMember, Post, Comment, Event, PostView
+import os
+import requests
+#valami
+
+TANREND_API_URL = "https://elte-orarend.vercel.app"
 
 
 # Email minta
@@ -148,6 +153,126 @@ def register_routes(app):
             "hobbies": user.hobbies,
             "avatar_url": user.avatar_url
         })
+    
+    
+    @app.route("/subjects/search", methods=["GET"])
+    def search_subjects():
+        # Token ellenőrzés – ugyanúgy, mint /groups/search-nél
+        auth_header = request.headers.get("Authorization")
+        if not auth_header:
+            return jsonify({"error": "Hiányzó token"}), 401
+
+        try:
+            token = auth_header.split(" ")[1]
+            decoded = verify_jwt_token(token)
+        except Exception:
+            return jsonify({"error": "Hibás token"}), 401
+
+        if not decoded:
+            return jsonify({"error": "Érvénytelen vagy lejárt token"}), 401
+
+        # Keresési paraméterek
+        query = request.args.get("q", "").strip()
+        year = request.args.get("year", "2025-2026-1")
+
+        if not query:
+            return jsonify([])
+
+        # Hívjuk a Vercelre kitett tanrend JS API-t
+        try:
+            print(">>> TANREND_API_URL:", TANREND_API_URL)
+            resp = requests.post(
+                f"{TANREND_API_URL}/api",
+                json={"year": year, "name": query},
+                timeout=10
+            )
+            print(">>> Tanrend API status:", resp.status_code)
+            print(">>> Tanrend API body:", resp.text[:300])
+        except Exception as e:
+            print("Tanrend API error (kivétel):", e)
+            print("Tanrend API error:", e)
+            return jsonify([]), 502
+
+        if resp.status_code != 200:
+            return jsonify([]), 502
+
+        rows = resp.json()  # string[][]
+
+        # Sorok → egyedi tárgyak: code + name
+        subjects_by_code = {}
+        for row in rows:
+            
+            if len(row) < 3:
+                continue
+            time_str = row[0]
+            raw_code = row[1].strip()
+            print("EZ ITT A KÓD")
+            print(raw_code)
+            code = raw_code.split("(")[0].strip()
+            m = re.match(r"^(.*?)-(\d+)$", code)
+            if m:
+                code = m.group(1)
+
+            name = row[2].strip()
+
+            if not code or not name:
+                continue
+
+            print(code)
+            if code not in subjects_by_code:
+                subjects_by_code[code] = {
+                    "code": code,
+                    "name": name,
+                }
+
+        # Ezt kapja a frontend: [{ code, name }, ...]
+        return jsonify(list(subjects_by_code.values())), 200
+    
+
+    @app.route("/groups/by-subject", methods=["GET"])
+    def groups_by_subject():
+        # Token check
+        auth_header = request.headers.get("Authorization")
+        if not auth_header:
+            return jsonify({"error": "Hiányzó token"}), 401
+
+        try:
+            token = auth_header.split(" ")[1]
+            decoded = verify_jwt_token(token)
+        except Exception:
+            return jsonify({"error": "Hibás token"}), 401
+
+        if not decoded:
+            return jsonify({"error": "Érvénytelen vagy lejárt token"}), 401
+
+        user_id = decoded["user_id"]
+
+        subject_name = request.args.get("name", "").strip()
+        if not subject_name:
+            return jsonify({"error": "Hiányzik a subject name"}), 400
+
+        groups = Group.query.filter(Group.subject == subject_name).all()
+
+        group_list = []
+        for g in groups:
+            members = GroupMember.query.filter_by(group_id=g.id).all()
+            member_count = len(members)
+
+            existing_member = GroupMember.query.filter_by(
+                group_id=g.id, user_id=user_id
+            ).first()
+
+            group_list.append({
+                "id": g.id,
+                "name": g.name,
+                "subject": g.subject,
+                "description": g.description,
+                "member_count": member_count,
+                "is_member": existing_member is not None,
+            })
+
+        return jsonify(group_list), 200
+
 
     @app.route("/groups/search", methods=["GET"])
     def search_groups():

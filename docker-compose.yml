@@ -31,6 +31,7 @@ services:
       FLASK_DEBUG: "1"
       DATABASE_URL: mysql+pymysql://user:password@db:3306/studybuddy
       FLASK_APP: app.py
+      TANREND_API_URL: "http://elte_tanrend_api:3001"
     command: flask run --host=0.0.0.0 --port=5000 --debug  # Hot reload
 
 
@@ -53,6 +54,11 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+
+  elte_tanrend_api:
+    build: ./elte_tanrend_api
+    ports:
+      - "3001:3001"
 
 volumes:
   db_data:

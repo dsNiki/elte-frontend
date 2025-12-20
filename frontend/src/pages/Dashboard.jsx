@@ -11,10 +11,10 @@ import {
   Typography,
   Box,
   Divider,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
+  //Select,
+  //MenuItem,
+  //FormControl,
+  //InputLabel,
   Card,
   CardContent,
   CircularProgress,
@@ -36,28 +36,10 @@ import "./Dashboard.css";
 import logo from "../assets/logo_studyBuddy.png";
 import studySession from "../assets/study-group-session-stockcake.png";
 import image2 from "../assets/generated-image.png";
+import SubjectGroupSearch from "../components/SubjectGroupSearch.jsx";
 
 // Tárgyak listája pelda
-const SUBJECTS = [
-  "Analízis",
-  "Lineáris algebra",
-  "Diszkrét matematika",
-  "Adatstruktúrák és algoritmusok",
-  "Programozás",
-  "Adatbázisok",
-  "Hálózatok",
-  "Operációs rendszerek",
-  "Szoftvertechnológia",
-  "Mesterséges intelligencia",
-  "Gépi tanulás",
-  "Webfejlesztés",
-  "Mobilalkalmazás fejlesztés",
-  "Számítógépes grafika",
-  "Kriptográfia",
-  "Adatbányászat",
-  "Statisztika",
-  "Valószínűségszámítás",
-];
+
 
 const Dashboard = () => {
   const dispatch = useDispatch();
@@ -66,7 +48,7 @@ const Dashboard = () => {
   const [profileModalOpen, setProfileModalOpen] = useState(false);
   const [settingsModalOpen, setSettingsModalOpen] = useState(false);
   const [joinGroupModalOpen, setJoinGroupModalOpen] = useState(false);
-  const [selectedSubject, setSelectedSubject] = useState("");
+  const [selectedSubject] = useState("");
   const [groups, setGroups] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -248,7 +230,7 @@ const Dashboard = () => {
 
   const handleAddButton = () => {
     setActiveTab("search");
-    setJoinGroupModalOpen(true);
+    //setJoinGroupModalOpen(true);
   };
 
   const handleCloseJoinGroupModal = () => {
@@ -256,7 +238,7 @@ const Dashboard = () => {
     //setSelectedSubject("");
   };
 
-  const handleJoinGroup = async () => {
+  /*const handleJoinGroup = async () => {
     if (!selectedSubject) {
       setError("Válassz ki egy tárgyat!");
       return;
@@ -296,7 +278,7 @@ const Dashboard = () => {
     } finally {
       setLoading(false);
     }
-  };
+  };*/
 
   const handleJoinToGroup = async (groupId) => {
     console.log("HANDLE JOIN CALLED:", groupId);
@@ -680,284 +662,7 @@ const Dashboard = () => {
           </Box>
         )}
         {/* KERESÉS TAB */}
-        {activeTab === "search" && (
-          <>
-            {groups.length === 0 && !loading && (
-              <>
-                <h2>Üdvözöllek a Study Buddy-ban!</h2>
-                <p>Szak: {user?.major}</p>
-                <p>Email: {user?.email}</p>
-              </>
-            )}
-
-            {error && (
-              <Alert
-                severity="error"
-                sx={{ mb: 2 }}
-                onClose={() => setError(null)}
-              >
-                {error}
-              </Alert>
-            )}
-
-            {loading && (
-              <Box
-                display="flex"
-                justifyContent="center"
-                alignItems="center"
-                minHeight="200px"
-              >
-                <CircularProgress />
-              </Box>
-            )}
-
-            {groups.length > 0 && (
-              <Box sx={{ width: "100%" }}>
-                <Box
-                  sx={{
-                    mb: 4,
-                    p: 3,
-                    borderRadius: "16px",
-                    background:
-                      "linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)",
-                    border: "1px solid rgba(102, 126, 234, 0.2)",
-                  }}
-                >
-                  <Typography
-                    variant="h4"
-                    sx={{
-                      mb: 1,
-                      background:
-                        "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                      WebkitBackgroundClip: "text",
-                      WebkitTextFillColor: "transparent",
-                      backgroundClip: "text",
-                      fontWeight: 700,
-                    }}
-                  >
-                    Elérhető csoportok
-                  </Typography>
-                  <Typography
-                    variant="h6"
-                    sx={{
-                      color: "#667eea",
-                      fontWeight: 600,
-                    }}
-                  >
-                    {selectedSubject}
-                  </Typography>
-                </Box>
-                <Box
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    gap: 2,
-                    pb: 4,
-                    width: "100%",
-                  }}
-                >
-                  {groups.map((group) => (
-                    <Card
-                      key={group.id}
-                      sx={{
-                        position: "relative",
-                        transition: "all 0.3s ease",
-                        background: "rgba(255, 255, 255, 1)",
-                        borderRadius: "20px",
-                        border: "1px solid rgba(102, 126, 234, 0.2)",
-                        boxShadow: "0 4px 20px rgba(102, 126, 234, 0.1)",
-                        overflow: "hidden",
-                        "&:hover": {
-                          boxShadow: "0 8px 32px rgba(102, 126, 234, 0.25)",
-                          transform: "translateY(-4px)",
-                          borderColor: "rgba(102, 126, 234, 0.4)",
-                        },
-                        "&::before": {
-                          content: '""',
-                          position: "absolute",
-                          top: 0,
-                          left: 0,
-                          right: 0,
-                          height: "4px",
-                          background:
-                            "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                        },
-                      }}
-                    >
-                      <CardContent sx={{ p: 3 }}>
-                        <Box
-                          display="flex"
-                          justifyContent="space-between"
-                          alignItems="flex-start"
-                          gap={2}
-                          flexWrap={{ xs: "wrap", sm: "nowrap" }}
-                        >
-                          <Box flex={1} minWidth={0}>
-                            <Typography
-                              variant="h6"
-                              gutterBottom
-                              sx={{
-                                fontWeight: 700,
-                                background:
-                                  "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                                WebkitBackgroundClip: "text",
-                                WebkitTextFillColor: "transparent",
-                                backgroundClip: "text",
-                                mb: 1,
-                                fontSize: "1.5rem",
-                              }}
-                            >
-                              {group.name}
-                            </Typography>
-                            {group.description && (
-                              <Typography
-                                variant="body2"
-                                color="text.secondary"
-                                sx={{ mb: 2 }}
-                              >
-                                {group.description}
-                              </Typography>
-                            )}
-                            {group.common_hobbies &&
-                              group.common_hobbies.length > 0 && (
-                                <Box sx={{ mb: 2 }}>
-                                  <Typography
-                                    variant="caption"
-                                    color="text.secondary"
-                                    sx={{
-                                      display: "block",
-                                      mb: 0.75,
-                                      fontWeight: 500,
-                                    }}
-                                  >
-                                    Közös hobbik:
-                                  </Typography>
-                                  <Box
-                                    sx={{
-                                      display: "flex",
-                                      flexWrap: "wrap",
-                                      gap: 0.75,
-                                    }}
-                                  >
-                                    {group.common_hobbies.map((hobby) => (
-                                      <Box
-                                        key={hobby}
-                                        sx={{
-                                          px: 1.5,
-                                          py: 0.5,
-                                          borderRadius: "12px",
-                                          background:
-                                            "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                                          color: "white",
-                                          fontSize: "12px",
-                                          fontWeight: 600,
-                                          boxShadow:
-                                            "0 2px 8px rgba(102, 126, 234, 0.3)",
-                                          transition: "all 0.2s ease",
-                                          "&:hover": {
-                                            transform: "scale(1.05)",
-                                            boxShadow:
-                                              "0 4px 12px rgba(102, 126, 234, 0.4)",
-                                          },
-                                        }}
-                                      >
-                                        {hobby}
-                                      </Box>
-                                    ))}
-                                  </Box>
-                                </Box>
-                              )}
-                            <Box display="flex" alignItems="center" gap={1}>
-                              <IconButton
-                                size="small"
-                                onClick={() =>
-                                  handleViewMembers(group.id, group.name)
-                                }
-                                sx={{
-                                  color: "text.secondary",
-                                  "&:hover": {
-                                    bgcolor: "action.hover",
-                                  },
-                                }}
-                              >
-                                <PeopleIcon />
-                              </IconButton>
-                              <Typography
-                                variant="body2"
-                                color="text.secondary"
-                              >
-                                {group.member_count || 0} / 6 fő
-                              </Typography>
-                            </Box>
-                          </Box>
-                          <Box
-                            sx={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 1,
-                            }}
-                          >
-                            <Button
-                              variant="contained"
-                              onClick={() => {
-                                console.log("BUTTON CLICK group.id:", group.id);
-                                handleJoinToGroup(group.id);
-                              }}
-                              disabled={
-                                (group.member_count || 0) >= 6 ||
-                                joiningGroupId === group.id ||
-                                isUserMemberOfGroup(group)
-                              }
-                              startIcon={
-                                joiningGroupId === group.id ? (
-                                  <CircularProgress size={16} color="inherit" />
-                                ) : (
-                                  <AddIcon />
-                                )
-                              }
-                              sx={{
-                                background:
-                                  "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                                color: "white",
-                                px: 3,
-                                py: 1.5,
-                                borderRadius: "12px",
-                                textTransform: "none",
-                                fontWeight: 600,
-                                boxShadow:
-                                  "0 4px 15px rgba(102, 126, 234, 0.3)",
-                                transition: "all 0.3s ease",
-                                "&:hover": {
-                                  background:
-                                    "linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%)",
-                                  boxShadow:
-                                    "0 6px 20px rgba(102, 126, 234, 0.4)",
-                                  transform: "translateY(-2px)",
-                                },
-                                "&.Mui-disabled": {
-                                  background:
-                                    "linear-gradient(135deg, #e0e0e0 0%, #bdbdbd 100%)",
-                                  color: "#9e9e9e",
-                                  boxShadow: "none",
-                                },
-                              }}
-                            >
-                              {joiningGroupId === group.id
-                                ? "Csatlakozás..."
-                                : isUserMemberOfGroup(group)
-                                ? "Már tag vagy"
-                                : "Csatlakozás"}
-                            </Button>
-                          </Box>
-                        </Box>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </Box>
-              </Box>
-            )}
-          </>
-        )}
+        {activeTab === "search" && <SubjectGroupSearch />}
 
         {/* SAJÁT CSOPORTOK TAB */}
         {activeTab === "my" && (
@@ -1388,26 +1093,15 @@ const Dashboard = () => {
             Csatlakozás csoporthoz
           </Typography>
         </DialogTitle>
+
+        {/* EDDIGI FormControl + Select HELYETT EZ */}
         <DialogContent>
           <Box sx={{ mt: 2 }}>
-            <FormControl fullWidth>
-              <InputLabel id="subject-select-label">Tárgy</InputLabel>
-              <Select
-                labelId="subject-select-label"
-                id="subject-select"
-                value={selectedSubject}
-                label="Tárgy"
-                onChange={(e) => setSelectedSubject(e.target.value)}
-              >
-                {SUBJECTS.map((subject) => (
-                  <MenuItem key={subject} value={subject}>
-                    {subject}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+            <SubjectGroupSearch />
           </Box>
         </DialogContent>
+
+        {/* Alsó gombsorban csak Bezárás kell, a keresést a SubjectGroupSearch intézi */}
         <DialogActions sx={{ p: 3, gap: 2 }}>
           <Button
             onClick={handleCloseJoinGroupModal}
@@ -1422,30 +1116,7 @@ const Dashboard = () => {
               },
             }}
           >
-            Mégse
-          </Button>
-          <Button
-            onClick={handleJoinGroup}
-            variant="contained"
-            disabled={!selectedSubject}
-            sx={{
-              background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-              borderRadius: "12px",
-              px: 3,
-              py: 1,
-              fontWeight: 600,
-              boxShadow: "0 4px 15px rgba(102, 126, 234, 0.3)",
-              "&:hover": {
-                background: "linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%)",
-                boxShadow: "0 6px 20px rgba(102, 126, 234, 0.4)",
-              },
-              "&.Mui-disabled": {
-                background: "linear-gradient(135deg, #e0e0e0 0%, #bdbdbd 100%)",
-                color: "#9e9e9e",
-              },
-            }}
-          >
-            Keresés
+            Bezárás
           </Button>
         </DialogActions>
       </Dialog>
