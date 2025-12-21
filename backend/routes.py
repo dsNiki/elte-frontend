@@ -1,16 +1,26 @@
-from flask import request, jsonify  # pyright: ignore[reportMissingImports]
+from flask import request, jsonify, current_app  # pyright: ignore[reportMissingImports]
 import re
 import bcrypt  # pyright: ignore[reportMissingImports]
 import jwt  # pyright: ignore[reportMissingImports]
 from datetime import datetime, timedelta, timezone
 from config import Config
-from models import db, User, Group, GroupMember, Post, Comment, Event, PostView
+from models import db, User, Group, GroupMember, Post, Comment, Event, PostView, PostAttachment
 import os
 import requests
+from werkzeug.utils import secure_filename
 #valami
 
 TANREND_API_URL = "https://elte-orarend.vercel.app"
 
+
+BASE_DIR = os.path.abspath(os.path.dirname(__file__))
+
+class Config:
+    SECRET_KEY = os.environ.get("SECRET_KEY", "dev-secret-key-change-me")
+
+    SQLALCHEMY_DATABASE_URI = "mysql+mysqlconnector://user:password@studybuddy_db/studybuddy"
+    SQLALCHEMY_TRACK_MODIFICATIONS = False
+    UPLOAD_FOLDER = os.path.join(BASE_DIR, "uploads")
 
 # Email minta
 ELTE_EMAIL_REGEX = r"^[a-zA-Z0-9._%+-]+@(student\.elte\.hu|elte\.hu)$"
@@ -1190,3 +1200,67 @@ def register_routes(app):
             "message": "Posztok sikeresen olvasottnak jelölve",
             "marked_count": len(new_views)
         }), 200
+        
+    @app.route("/posts/<int:post_id>/attachments", methods=["POST"])
+    def upload_post_attachment(post_id):
+        # AUTH
+        auth_header = request.headers.get("Authorization")
+        if not auth_header:
+            return jsonify({"error": "Hiányzó token"}), 401
+
+        token = auth_header.split(" ")[1]
+        decoded = verify_jwt_token(token)
+        if not decoded:
+            return jsonify({"error": "Érvénytelen token"}), 401
+
+        user_id = decoded["user_id"]
+
+        post = Post.query.get(post_id)
+        if not post or post.deleted_at:
+            return jsonify({"error": "Poszt nem található"}), 404
+
+        if post.author_id != user_id:
+            return jsonify({"error": "Csak a poszt szerzője tölthet fel fájlt"}), 403
+
+        # FILE CHECK
+        if "file" not in request.files:
+            return jsonify({"error": "Nincs fájl csatolva"}), 400
+
+        file = request.files["file"]
+        if file.filename == "":
+            return jsonify({"error": "Üres fájlnév"}), 400
+
+        filename = secure_filename(file.filename)
+
+        post_folder = os.path.join(
+            Config.UPLOAD_FOLDER,
+            "posts",
+            str(post_id)
+        )
+        
+        os.makedirs(post_folder, exist_ok=True)
+
+        file_path = os.path.join(post_folder, filename)
+        file.save(file_path)
+
+        file_url = f"/uploads/posts/{post_id}/{filename}"
+
+        attachment = PostAttachment(
+            post_id=post_id,
+            filename=filename,
+            file_url=file_url,
+            mime_type=file.mimetype
+        )
+
+        db.session.add(attachment)
+        db.session.commit()
+
+        return jsonify({
+            "message": "Fájl sikeresen feltöltve",
+            "attachment": {
+                "id": attachment.id,
+                "filename": attachment.filename,
+                "url": attachment.file_url
+            }
+        }), 201
+
