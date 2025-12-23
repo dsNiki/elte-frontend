@@ -1,10 +1,11 @@
-from flask import Flask # type: ignore
+from flask import Flask, send_from_directory # type: ignore
 from config import Config
 from models import db
 from routes import register_routes
 from flask_cors import CORS # type: ignore
 from werkzeug.exceptions import HTTPException # type: ignore
 from flask import jsonify  # type: ignore
+import os
 
 
 from flask import render_template
@@ -52,6 +53,12 @@ def create_app():
     @app.route("/test")
     def test_page():
         return render_template("test.html")
+    
+    # Fájl letöltési endpoint
+    @app.route("/uploads/<path:folder>/<path:filename>")
+    def uploaded_file(folder, filename):
+        uploads_dir = os.path.join(Config.UPLOAD_FOLDER, folder)
+        return send_from_directory(uploads_dir, filename)
     
     # Route-ok regisztrálása külön file-ból
     register_routes(app)

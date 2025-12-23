@@ -30,6 +30,9 @@ import {
   Delete as DeleteIcon,
   Edit as EditIcon,
   CalendarToday as CalendarIcon,
+  AttachFile as AttachFileIcon,
+  Download as DownloadIcon,
+  Close as CloseIcon,
 } from "@mui/icons-material";
 import { groupService, forumService, authService } from "../services/api";
 import Calendar from "../components/Calendar/Calendar";
@@ -46,11 +49,13 @@ const Forum = () => {
   const [openPostDialog, setOpenPostDialog] = useState(false);
   const [newPostTitle, setNewPostTitle] = useState("");
   const [newPostContent, setNewPostContent] = useState("");
+  const [newPostFile, setNewPostFile] = useState(null);
   const [submittingPost, setSubmittingPost] = useState(false);
   const [expandedPosts, setExpandedPosts] = useState({});
   const [comments, setComments] = useState({});
   const [loadingComments, setLoadingComments] = useState({});
   const [newComments, setNewComments] = useState({});
+  const [newCommentFiles, setNewCommentFiles] = useState({});
   const [submittingComment, setSubmittingComment] = useState({});
   const [groupMembers, setGroupMembers] = useState([]);
   const [membersModalOpen, setMembersModalOpen] = useState(false);
@@ -146,9 +151,10 @@ const Forum = () => {
     setOpenPostDialog(false);
 
     try {
-      await forumService.createPost(groupId, newPostTitle, newPostContent);
+      await forumService.createPost(groupId, newPostTitle, newPostContent, newPostFile);
       setNewPostTitle("");
       setNewPostContent("");
+      setNewPostFile(null);
       await fetchPosts();
     } catch (err) {
       console.error("Poszt létrehozási hiba:", err);
@@ -192,14 +198,17 @@ const Forum = () => {
     setError(null);
 
     try {
+      const file = newCommentFiles[postId] || null;
       const newComment = await forumService.createComment(
         postId,
-        commentContent
+        commentContent,
+        file
       );
       // Hozzáadjuk a kommentekhez
       const updatedComments = comments[postId] || [];
       setComments({ ...comments, [postId]: [...updatedComments, newComment] });
       setNewComments({ ...newComments, [postId]: "" });
+      setNewCommentFiles({ ...newCommentFiles, [postId]: null });
     } catch (err) {
       console.error("Komment létrehozási hiba:", err);
       setError(
@@ -289,11 +298,45 @@ const Forum = () => {
     setPostToDelete(null);
   };
 
+  const [deletingAttachment, setDeletingAttachment] = useState(null);
+
   const handleEditPost = (post) => {
     setPostToEdit(post);
     setEditingPostTitle(post.title);
     setEditingPostContent(post.content);
     setEditPostDialogOpen(true);
+  };
+
+  const handleDeleteAttachment = async (attachmentId) => {
+    setDeletingAttachment(attachmentId);
+    try {
+      await forumService.deleteAttachment(attachmentId);
+      // Frissítjük a posztot
+      await fetchPosts();
+      // Frissítjük a szerkesztendő posztot is
+      if (postToEdit) {
+        const updatedPosts = await forumService.getPosts(groupId);
+        const updatedPost = updatedPosts.find(p => p.id === postToEdit.id);
+        if (updatedPost) {
+          setPostToEdit(updatedPost);
+        }
+      }
+      // Frissítjük a szerkesztendő kommentet is
+      if (commentToEdit) {
+        const commentsData = await forumService.getComments(commentToEdit.post_id);
+        const updatedComment = commentsData.find(c => c.id === commentToEdit.id);
+        if (updatedComment) {
+          setCommentToEdit(updatedComment);
+        }
+      }
+    } catch (err) {
+      console.error("Fájl törlési hiba:", err);
+      setError(
+        err.response?.data?.error || "Hiba történt a fájl törlése során"
+      );
+    } finally {
+      setDeletingAttachment(null);
+    }
   };
 
   const confirmEditPost = async () => {
@@ -686,7 +729,7 @@ const Forum = () => {
                     variant="body1"
                     sx={{
                       color: "#555",
-                      mb: 3,
+                      mb: post.attachments && post.attachments.length > 0 ? 2 : 3,
                       whiteSpace: "pre-wrap",
                       lineHeight: 1.8,
                       fontSize: "1rem",
@@ -694,6 +737,49 @@ const Forum = () => {
                   >
                     {post.content}
                   </Typography>
+
+                  {/* Post Attachments */}
+                  {post.attachments && post.attachments.length > 0 && (
+                    <Box sx={{ mb: 2 }}>
+                      {post.attachments.map((attachment) => (
+                        <Box
+                          key={attachment.id}
+                          sx={{
+                            display: "flex",
+                            alignItems: "center",
+                            gap: 1,
+                            p: 1.5,
+                            mb: 1,
+                            borderRadius: "8px",
+                            backgroundColor: "rgba(102, 126, 234, 0.05)",
+                            border: "1px solid rgba(102, 126, 234, 0.2)",
+                          }}
+                        >
+                          <AttachFileIcon sx={{ color: "#667eea" }} />
+                          <Typography
+                            variant="body2"
+                            sx={{ flex: 1, color: "#333" }}
+                          >
+                            {attachment.filename}
+                          </Typography>
+                          <Button
+                            size="small"
+                            startIcon={<DownloadIcon />}
+                            onClick={() => {
+                              const url = `${process.env.REACT_APP_API_URL || "http://localhost:5000"}${attachment.file_url}`;
+                              window.open(url, "_blank");
+                            }}
+                            sx={{
+                              color: "#667eea",
+                              textTransform: "none",
+                            }}
+                          >
+                            Letöltés
+                          </Button>
+                        </Box>
+                      ))}
+                    </Box>
+                  )}
 
                   <Divider sx={{ my: 2 }} />
 
@@ -858,65 +944,177 @@ const Forum = () => {
                                           color: "#444",
                                           lineHeight: 1.6,
                                           pl: 5.5,
+                                          mb: comment.attachments && comment.attachments.length > 0 ? 1 : 0,
                                         }}
                                       >
                                         {comment.content}
                                       </Typography>
+                                      
+                                      {/* Comment Attachments */}
+                                      {comment.attachments && comment.attachments.length > 0 && (
+                                        <Box sx={{ pl: 5.5, mt: 1 }}>
+                                          {comment.attachments.map((attachment) => (
+                                            <Box
+                                              key={attachment.id}
+                                              sx={{
+                                                display: "flex",
+                                                alignItems: "center",
+                                                gap: 1,
+                                                p: 1,
+                                                mb: 1,
+                                                borderRadius: "8px",
+                                                backgroundColor: "rgba(102, 126, 234, 0.05)",
+                                                border: "1px solid rgba(102, 126, 234, 0.2)",
+                                              }}
+                                            >
+                                              <AttachFileIcon sx={{ color: "#667eea", fontSize: 18 }} />
+                                              <Typography
+                                                variant="caption"
+                                                sx={{ flex: 1, color: "#333" }}
+                                              >
+                                                {attachment.filename}
+                                              </Typography>
+                                              <Button
+                                                size="small"
+                                                startIcon={<DownloadIcon />}
+                                                onClick={() => {
+                                                  const url = `${process.env.REACT_APP_API_URL || "http://localhost:5000"}${attachment.file_url}`;
+                                                  window.open(url, "_blank");
+                                                }}
+                                                sx={{
+                                                  color: "#667eea",
+                                                  textTransform: "none",
+                                                  minWidth: "auto",
+                                                  px: 1,
+                                                }}
+                                              >
+                                                Letöltés
+                                              </Button>
+                                            </Box>
+                                          ))}
+                                        </Box>
+                                      )}
                                     </Box>
                                   ))}
                                 </Box>
                               )}
 
                             {/* Add Comment Form */}
-                            <Box
-                              sx={{
-                                display: "flex",
-                                gap: 1,
-                                alignItems: "flex-start",
-                              }}
-                            >
-                              <TextField
-                                fullWidth
-                                multiline
-                                rows={2}
-                                placeholder="Írj egy kommentet..."
-                                value={newComments[post.id] || ""}
-                                onChange={(e) =>
-                                  setNewComments({
-                                    ...newComments,
-                                    [post.id]: e.target.value,
-                                  })
-                                }
-                                variant="outlined"
-                                size="small"
+                            <Box>
+                              <Box
                                 sx={{
-                                  "& .MuiOutlinedInput-root": {
-                                    borderRadius: "12px",
-                                  },
-                                }}
-                              />
-                              <IconButton
-                                onClick={() => handleCreateComment(post.id)}
-                                disabled={submittingComment[post.id]}
-                                sx={{
-                                  background:
-                                    "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                                  color: "white",
-                                  "&:hover": {
-                                    background:
-                                      "linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%)",
-                                  },
-                                  "&:disabled": {
-                                    background: "#ccc",
-                                  },
+                                  display: "flex",
+                                  gap: 1,
+                                  alignItems: "flex-start",
+                                  mb: 1,
                                 }}
                               >
-                                {submittingComment[post.id] ? (
-                                  <CircularProgress size={20} color="inherit" />
-                                ) : (
-                                  <SendIcon />
+                                <TextField
+                                  fullWidth
+                                  multiline
+                                  rows={2}
+                                  placeholder="Írj egy kommentet..."
+                                  value={newComments[post.id] || ""}
+                                  onChange={(e) =>
+                                    setNewComments({
+                                      ...newComments,
+                                      [post.id]: e.target.value,
+                                    })
+                                  }
+                                  variant="outlined"
+                                  size="small"
+                                  sx={{
+                                    "& .MuiOutlinedInput-root": {
+                                      borderRadius: "12px",
+                                    },
+                                  }}
+                                />
+                                <IconButton
+                                  onClick={() => handleCreateComment(post.id)}
+                                  disabled={submittingComment[post.id]}
+                                  sx={{
+                                    background:
+                                      "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                                    color: "white",
+                                    "&:hover": {
+                                      background:
+                                        "linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%)",
+                                    },
+                                    "&:disabled": {
+                                      background: "#ccc",
+                                    },
+                                  }}
+                                >
+                                  {submittingComment[post.id] ? (
+                                    <CircularProgress size={20} color="inherit" />
+                                  ) : (
+                                    <SendIcon />
+                                  )}
+                                </IconButton>
+                              </Box>
+                              <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+                                <input
+                                  accept="*/*"
+                                  style={{ display: "none" }}
+                                  id={`comment-file-upload-${post.id}`}
+                                  type="file"
+                                  onChange={(e) => {
+                                    setNewCommentFiles({
+                                      ...newCommentFiles,
+                                      [post.id]: e.target.files[0] || null,
+                                    });
+                                  }}
+                                />
+                                <label htmlFor={`comment-file-upload-${post.id}`}>
+                                  <Button
+                                    component="span"
+                                    size="small"
+                                    startIcon={<AttachFileIcon />}
+                                    sx={{
+                                      borderColor: "#667eea",
+                                      color: "#667eea",
+                                      textTransform: "none",
+                                      "&:hover": {
+                                        borderColor: "#5568d3",
+                                        backgroundColor: "rgba(102, 126, 234, 0.05)",
+                                      },
+                                    }}
+                                    variant="outlined"
+                                  >
+                                    Fájl csatolása
+                                  </Button>
+                                </label>
+                                {newCommentFiles[post.id] && (
+                                  <Box
+                                    sx={{
+                                      display: "flex",
+                                      alignItems: "center",
+                                      gap: 0.5,
+                                      px: 1,
+                                      py: 0.5,
+                                      borderRadius: "8px",
+                                      backgroundColor: "rgba(102, 126, 234, 0.05)",
+                                    }}
+                                  >
+                                    <AttachFileIcon sx={{ color: "#667eea", fontSize: 16 }} />
+                                    <Typography variant="caption" sx={{ fontSize: "0.75rem" }}>
+                                      {newCommentFiles[post.id].name}
+                                    </Typography>
+                                    <IconButton
+                                      size="small"
+                                      onClick={() => {
+                                        setNewCommentFiles({
+                                          ...newCommentFiles,
+                                          [post.id]: null,
+                                        });
+                                      }}
+                                      sx={{ color: "#d32f2f", p: 0.5 }}
+                                    >
+                                      <CloseIcon fontSize="small" />
+                                    </IconButton>
+                                  </Box>
                                 )}
-                              </IconButton>
+                              </Box>
                             </Box>
                           </>
                         )}
@@ -933,7 +1131,10 @@ const Forum = () => {
       {/* Create Post Dialog */}
       <Dialog
         open={openPostDialog}
-        onClose={() => setOpenPostDialog(false)}
+        onClose={() => {
+          setOpenPostDialog(false);
+          setNewPostFile(null);
+        }}
         maxWidth="md"
         fullWidth
         PaperProps={{
@@ -969,11 +1170,67 @@ const Forum = () => {
             label="Tartalom"
             value={newPostContent}
             onChange={(e) => setNewPostContent(e.target.value)}
+            sx={{ mb: 2 }}
             required
           />
+          <Box>
+            <input
+              accept="*/*"
+              style={{ display: "none" }}
+              id="post-file-upload"
+              type="file"
+              onChange={(e) => setNewPostFile(e.target.files[0] || null)}
+            />
+            <label htmlFor="post-file-upload">
+              <Button
+                component="span"
+                variant="outlined"
+                startIcon={<AttachFileIcon />}
+                sx={{
+                  mb: 1,
+                  borderColor: "#667eea",
+                  color: "#667eea",
+                  "&:hover": {
+                    borderColor: "#5568d3",
+                    backgroundColor: "rgba(102, 126, 234, 0.05)",
+                  },
+                }}
+              >
+                Fájl csatolása
+              </Button>
+            </label>
+            {newPostFile && (
+              <Box
+                sx={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 1,
+                  p: 1,
+                  mt: 1,
+                  borderRadius: "8px",
+                  backgroundColor: "rgba(102, 126, 234, 0.05)",
+                }}
+              >
+                <AttachFileIcon sx={{ color: "#667eea", fontSize: 20 }} />
+                <Typography variant="body2" sx={{ flex: 1 }}>
+                  {newPostFile.name}
+                </Typography>
+                <IconButton
+                  size="small"
+                  onClick={() => setNewPostFile(null)}
+                  sx={{ color: "#d32f2f" }}
+                >
+                  <CloseIcon fontSize="small" />
+                </IconButton>
+              </Box>
+            )}
+          </Box>
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setOpenPostDialog(false)}>Mégse</Button>
+          <Button onClick={() => {
+            setOpenPostDialog(false);
+            setNewPostFile(null);
+          }}>Mégse</Button>
           <Button
             onClick={handleCreatePost}
             variant="contained"
@@ -1221,8 +1478,55 @@ const Forum = () => {
             label="Tartalom"
             value={editingPostContent}
             onChange={(e) => setEditingPostContent(e.target.value)}
+            sx={{ mb: 2 }}
             required
           />
+          
+          {/* Existing Attachments */}
+          {postToEdit?.attachments && postToEdit.attachments.length > 0 && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                Csatolt fájlok:
+              </Typography>
+              {postToEdit.attachments.map((attachment) => (
+                <Box
+                  key={attachment.id}
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                    p: 1.5,
+                    mb: 1,
+                    borderRadius: "8px",
+                    backgroundColor: "rgba(102, 126, 234, 0.05)",
+                    border: "1px solid rgba(102, 126, 234, 0.2)",
+                  }}
+                >
+                  <AttachFileIcon sx={{ color: "#667eea" }} />
+                  <Typography variant="body2" sx={{ flex: 1, color: "#333" }}>
+                    {attachment.filename}
+                  </Typography>
+                  <IconButton
+                    size="small"
+                    onClick={() => handleDeleteAttachment(attachment.id)}
+                    disabled={deletingAttachment === attachment.id}
+                    sx={{
+                      color: "#d32f2f",
+                      "&:hover": {
+                        backgroundColor: "rgba(211, 47, 47, 0.1)",
+                      },
+                    }}
+                  >
+                    {deletingAttachment === attachment.id ? (
+                      <CircularProgress size={16} />
+                    ) : (
+                      <DeleteIcon fontSize="small" />
+                    )}
+                  </IconButton>
+                </Box>
+              ))}
+            </Box>
+          )}
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
           <Button
@@ -1361,13 +1665,60 @@ const Forum = () => {
             label="Komment tartalma"
             value={editingCommentContent}
             onChange={(e) => setEditingCommentContent(e.target.value)}
-            required
-            sx={{
+            sx={{ 
+              mb: 2,
               "& .MuiOutlinedInput-root": {
                 borderRadius: "12px",
               },
             }}
+            required
           />
+          
+          {/* Existing Attachments */}
+          {commentToEdit?.attachments && commentToEdit.attachments.length > 0 && (
+            <Box sx={{ mb: 2 }}>
+              <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 600 }}>
+                Csatolt fájlok:
+              </Typography>
+              {commentToEdit.attachments.map((attachment) => (
+                <Box
+                  key={attachment.id}
+                  sx={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 1,
+                    p: 1.5,
+                    mb: 1,
+                    borderRadius: "8px",
+                    backgroundColor: "rgba(102, 126, 234, 0.05)",
+                    border: "1px solid rgba(102, 126, 234, 0.2)",
+                  }}
+                >
+                  <AttachFileIcon sx={{ color: "#667eea", fontSize: 18 }} />
+                  <Typography variant="body2" sx={{ flex: 1, color: "#333" }}>
+                    {attachment.filename}
+                  </Typography>
+                  <IconButton
+                    size="small"
+                    onClick={() => handleDeleteAttachment(attachment.id)}
+                    disabled={deletingAttachment === attachment.id}
+                    sx={{
+                      color: "#d32f2f",
+                      "&:hover": {
+                        backgroundColor: "rgba(211, 47, 47, 0.1)",
+                      },
+                    }}
+                  >
+                    {deletingAttachment === attachment.id ? (
+                      <CircularProgress size={16} />
+                    ) : (
+                      <DeleteIcon fontSize="small" />
+                    )}
+                  </IconButton>
+                </Box>
+              ))}
+            </Box>
+          )}
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
           <Button

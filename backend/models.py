@@ -181,3 +181,19 @@ class PostAttachment(db.Model):
     def __repr__(self):
         return f"<Attachment {self.filename}>"
 
+
+class CommentAttachment(db.Model):
+    __tablename__ = "comment_attachments"
+
+    id = db.Column(db.Integer, primary_key=True)
+    comment_id = db.Column(db.Integer, db.ForeignKey("comments.id"), nullable=False, index=True)
+
+    filename = db.Column(db.String(255), nullable=False)
+    file_url = db.Column(db.String(500), nullable=False)
+    mime_type = db.Column(db.String(100), nullable=True)
+    uploaded_at = db.Column(db.DateTime, default=datetime.utcnow)
+
+    comment = relationship("Comment", backref="attachments")
+
+    def __repr__(self):
+        return f"<CommentAttachment {self.filename}>"

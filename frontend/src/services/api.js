@@ -147,18 +147,40 @@ const forumService = {
     return response.data.posts || [];
   },
 
-  createPost: async (groupId, title, content) => {
+  createPost: async (groupId, title, content, file = null) => {
     const token = getAuthToken();
-    const response = await api.post(
-      `/groups/${groupId}/posts`,
-      { title, content },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-    return response.data.post;
+    
+    if (file) {
+      // Multipart/form-data használata fájl esetén
+      const formData = new FormData();
+      formData.append("title", title);
+      formData.append("content", content);
+      formData.append("file", file);
+      
+      const response = await axios.post(
+        `${API_URL}/groups/${groupId}/posts`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+      return response.data.post;
+    } else {
+      // JSON formátum fájl nélkül
+      const response = await api.post(
+        `/groups/${groupId}/posts`,
+        { title, content },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      return response.data.post;
+    }
   },
 
   getComments: async (postId) => {
@@ -171,18 +193,39 @@ const forumService = {
     return response.data.comments || [];
   },
 
-  createComment: async (postId, content) => {
+  createComment: async (postId, content, file = null) => {
     const token = getAuthToken();
-    const response = await api.post(
-      `/posts/${postId}/comments`,
-      { content },
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
-    );
-    return response.data.comment;
+    
+    if (file) {
+      // Multipart/form-data használata fájl esetén
+      const formData = new FormData();
+      formData.append("content", content);
+      formData.append("file", file);
+      
+      const response = await axios.post(
+        `${API_URL}/posts/${postId}/comments`,
+        formData,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "multipart/form-data",
+          },
+        }
+      );
+      return response.data.comment;
+    } else {
+      // JSON formátum fájl nélkül
+      const response = await api.post(
+        `/posts/${postId}/comments`,
+        { content },
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      return response.data.comment;
+    }
   },
 
   deletePost: async (postId) => {
@@ -231,6 +274,16 @@ const forumService = {
       }
     );
     return response.data.comment;
+  },
+
+  deleteAttachment: async (attachmentId) => {
+    const token = getAuthToken();
+    const response = await api.delete(`/attachments/${attachmentId}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data;
   },
 };
 

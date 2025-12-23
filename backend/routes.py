@@ -4,7 +4,7 @@ import bcrypt  # pyright: ignore[reportMissingImports]
 import jwt  # pyright: ignore[reportMissingImports]
 from datetime import datetime, timedelta, timezone
 from config import Config
-from models import db, User, Group, GroupMember, Post, Comment, Event, PostView, PostAttachment
+from models import db, User, Group, GroupMember, Post, Comment, Event, PostView, PostAttachment, CommentAttachment
 import os
 import requests
 from werkzeug.utils import secure_filename
@@ -631,14 +631,20 @@ def register_routes(app):
         if not membership:
             return jsonify({"error": "Nem vagy tagja a csoportnak"}), 403
 
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "Nincs JSON adat"}), 400
+        # Támogatjuk a multipart/form-data és JSON formátumot is
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            title = request.form.get("title")
+            content = request.form.get("content")
+            file = request.files.get("file")
+        else:
+            data = request.get_json()
+            if not data:
+                return jsonify({"error": "Nincs adat"}), 400
+            title = data.get("title")
+            content = data.get("content")
+            file = None
         
         #####################################################################
-
-        title = data.get("title")
-        content = data.get("content")
 
         if not title or not content:
             return jsonify({"error": "title és content kötelező"}), 400
@@ -653,19 +659,65 @@ def register_routes(app):
         )
 
         db.session.add(new_post)
+        db.session.flush()  # Hogy megkapjuk az ID-t
+
+        # Fájl kezelés
+        attachment_data = None
+        if file and file.filename:
+            try:
+                # Biztonságos fájlnév
+                filename = secure_filename(file.filename)
+                # Egyedi fájlnév generálása
+                timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+                unique_filename = f"{timestamp}_{filename}"
+                
+                # Uploads mappa létrehozása ha nem létezik
+                upload_dir = os.path.join(Config.UPLOAD_FOLDER, "posts")
+                os.makedirs(upload_dir, exist_ok=True)
+                
+                file_path = os.path.join(upload_dir, unique_filename)
+                file.save(file_path)
+                
+                # Relatív URL a fájlhoz
+                file_url = f"/uploads/posts/{unique_filename}"
+                
+                attachment = PostAttachment(
+                    post_id=new_post.id,
+                    filename=filename,
+                    file_url=file_url,
+                    mime_type=file.content_type,
+                    uploaded_at=datetime.now(timezone.utc)
+                )
+                db.session.add(attachment)
+                
+                attachment_data = {
+                    "id": attachment.id,
+                    "filename": attachment.filename,
+                    "file_url": attachment.file_url,
+                    "mime_type": attachment.mime_type
+                }
+            except Exception as e:
+                db.session.rollback()
+                return jsonify({"error": f"Fájl feltöltési hiba: {str(e)}"}), 500
+
         db.session.commit()
+
+        post_response = {
+            "id": new_post.id,
+            "title": new_post.title,
+            "content": new_post.content,
+            "group_id": new_post.group_id,
+            "author_id": new_post.author_id,
+            "created_at": new_post.created_at.isoformat(),
+            "updated_at": new_post.updated_at.isoformat()
+        }
+        
+        if attachment_data:
+            post_response["attachment"] = attachment_data
 
         return jsonify({
             "message": "Poszt sikeresen létrehozva",
-            "post": {
-                "id": new_post.id,
-                "title": new_post.title,
-                "content": new_post.content,
-                "group_id": new_post.group_id,
-                "author_id": new_post.author_id,
-                "created_at": new_post.created_at.isoformat(),
-                "updated_at": new_post.updated_at.isoformat()
-            }
+            "post": post_response
         }), 201
 
     @app.route("/groups/<int:group_id>/posts", methods=["GET"])
@@ -700,7 +752,7 @@ def register_routes(app):
 
         posts_json = []
         for p in posts:
-            posts_json.append({
+            post_data = {
                 "id": p.id,
                 "title": p.title,
                 "content": p.content,
@@ -708,7 +760,20 @@ def register_routes(app):
                 "author_id": p.author_id,
                 "created_at": p.created_at.isoformat() if p.created_at else None,
                 "updated_at": p.updated_at.isoformat() if p.updated_at else None,
-            })
+            }
+            # Attachment-ek hozzáadása
+            attachments = PostAttachment.query.filter_by(post_id=p.id).all()
+            if attachments:
+                post_data["attachments"] = [
+                    {
+                        "id": att.id,
+                        "filename": att.filename,
+                        "file_url": att.file_url,
+                        "mime_type": att.mime_type
+                    }
+                    for att in attachments
+                ]
+            posts_json.append(post_data)
 
         return jsonify({
             "group_id": group_id,
@@ -806,11 +871,17 @@ def register_routes(app):
         if not post or post.deleted_at is not None:
             return jsonify({"error": "Poszt nem található"}), 404
 
-        data = request.get_json()
-        if not data:
-            return jsonify({"error": "Nincs JSON adat"}), 400
+        # Támogatjuk a multipart/form-data és JSON formátumot is
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            content = request.form.get("content")
+            file = request.files.get("file")
+        else:
+            data = request.get_json()
+            if not data:
+                return jsonify({"error": "Nincs adat"}), 400
+            content = data.get("content")
+            file = None
 
-        content = data.get("content")
         if not content:
             return jsonify({"error": "A comment content kötelező"}), 400
         
@@ -825,17 +896,63 @@ def register_routes(app):
         )
 
         db.session.add(new_comment)
+        db.session.flush()  # Hogy megkapjuk az ID-t
+
+        # Fájl kezelés
+        attachment_data = None
+        if file and file.filename:
+            try:
+                # Biztonságos fájlnév
+                filename = secure_filename(file.filename)
+                # Egyedi fájlnév generálása
+                timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
+                unique_filename = f"{timestamp}_{filename}"
+                
+                # Uploads mappa létrehozása ha nem létezik
+                upload_dir = os.path.join(Config.UPLOAD_FOLDER, "comments")
+                os.makedirs(upload_dir, exist_ok=True)
+                
+                file_path = os.path.join(upload_dir, unique_filename)
+                file.save(file_path)
+                
+                # Relatív URL a fájlhoz
+                file_url = f"/uploads/comments/{unique_filename}"
+                
+                attachment = CommentAttachment(
+                    comment_id=new_comment.id,
+                    filename=filename,
+                    file_url=file_url,
+                    mime_type=file.content_type,
+                    uploaded_at=datetime.now(timezone.utc)
+                )
+                db.session.add(attachment)
+                
+                attachment_data = {
+                    "id": attachment.id,
+                    "filename": attachment.filename,
+                    "file_url": attachment.file_url,
+                    "mime_type": attachment.mime_type
+                }
+            except Exception as e:
+                db.session.rollback()
+                return jsonify({"error": f"Fájl feltöltési hiba: {str(e)}"}), 500
+
         db.session.commit()
+
+        comment_response = {
+            "id": new_comment.id,
+            "content": new_comment.comment,
+            "post_id": new_comment.post_id,
+            "author_id": new_comment.author_id,
+            "created_at": new_comment.created_at.isoformat()
+        }
+        
+        if attachment_data:
+            comment_response["attachment"] = attachment_data
 
         return jsonify({
             "message": "Komment sikeresen létrehozva",
-            "comment": {
-                "id": new_comment.id,
-                "content": new_comment.comment,
-                "post_id": new_comment.post_id,
-                "author_id": new_comment.author_id,
-                "created_at": new_comment.created_at.isoformat()
-            }
+            "comment": comment_response
         }), 201
 
     @app.route("/posts/<int:post_id>/comments", methods=["GET"])
@@ -859,13 +976,26 @@ def register_routes(app):
 
         comments_json = []
         for c in comments:
-            comments_json.append({
+            comment_data = {
                 "id": c.id,
                 "content": c.comment,
                 "post_id": c.post_id,
                 "author_id": c.author_id,
                 "created_at": c.created_at.isoformat() if c.created_at else None,
-            })
+            }
+            # Attachment-ek hozzáadása
+            attachments = CommentAttachment.query.filter_by(comment_id=c.id).all()
+            if attachments:
+                comment_data["attachments"] = [
+                    {
+                        "id": att.id,
+                        "filename": att.filename,
+                        "file_url": att.file_url,
+                        "mime_type": att.mime_type
+                    }
+                    for att in attachments
+                ]
+            comments_json.append(comment_data)
 
         return jsonify({
             "post_id": post_id,
@@ -1263,4 +1393,71 @@ def register_routes(app):
                 "url": attachment.file_url
             }
         }), 201
+
+    @app.route("/attachments/<int:attachment_id>", methods=["DELETE"])
+    def delete_post_attachment(attachment_id):
+        # AUTH
+        auth_header = request.headers.get("Authorization")
+        if not auth_header:
+            return jsonify({"error": "Hiányzó token"}), 401
+
+        token = auth_header.split(" ")[1]
+        decoded = verify_jwt_token(token)
+        if not decoded:
+            return jsonify({"error": "Érvénytelen token"}), 401
+
+        user_id = decoded["user_id"]
+
+        attachment = PostAttachment.query.get(attachment_id)
+        if not attachment:
+            # Próbáljuk meg CommentAttachment-ként
+            attachment = CommentAttachment.query.get(attachment_id)
+            if not attachment:
+                return jsonify({"error": "Fájl nem található"}), 404
+            
+            # Komment attachment ellenőrzés
+            comment = Comment.query.get(attachment.comment_id)
+            if not comment or comment.deleted_at:
+                return jsonify({"error": "Komment nem található"}), 404
+            
+            if comment.author_id != user_id:
+                return jsonify({"error": "Csak a komment szerzője törölheti a fájlt"}), 403
+            
+            # Fájl törlése a fájlrendszerből
+            try:
+                # file_url formátum: /uploads/comments/filename vagy /uploads/posts/filename
+                file_url_clean = attachment.file_url.lstrip("/")
+                file_path = os.path.join(Config.UPLOAD_FOLDER, file_url_clean.replace("uploads/", ""))
+                if os.path.exists(file_path):
+                    os.remove(file_path)
+            except Exception as e:
+                print(f"Fájl törlési hiba: {e}")
+            
+            db.session.delete(attachment)
+            db.session.commit()
+            
+            return jsonify({"message": "Fájl sikeresen törölve"}), 200
+
+        # Poszt attachment ellenőrzés
+        post = Post.query.get(attachment.post_id)
+        if not post or post.deleted_at:
+            return jsonify({"error": "Poszt nem található"}), 404
+
+        if post.author_id != user_id:
+            return jsonify({"error": "Csak a poszt szerzője törölheti a fájlt"}), 403
+
+        # Fájl törlése a fájlrendszerből
+        try:
+            # file_url formátum: /uploads/posts/filename
+            file_url_clean = attachment.file_url.lstrip("/")
+            file_path = os.path.join(Config.UPLOAD_FOLDER, file_url_clean.replace("uploads/", ""))
+            if os.path.exists(file_path):
+                os.remove(file_path)
+        except Exception as e:
+            print(f"Fájl törlési hiba: {e}")
+
+        db.session.delete(attachment)
+        db.session.commit()
+
+        return jsonify({"message": "Fájl sikeresen törölve"}), 200
 
