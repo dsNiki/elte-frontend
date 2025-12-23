@@ -392,7 +392,7 @@ const Forum = () => {
       formData.append("file", editingPostFile);
 
       const token = localStorage.getItem("authToken");
-      const response = await axios.post(
+      await axios.post(
         `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/posts/${postToEdit.id}/attachments`,
         formData,
         {
