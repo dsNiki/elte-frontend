@@ -768,6 +768,10 @@ def register_routes(app):
                 "created_at": p.created_at.isoformat() if p.created_at else None,
                 "updated_at": p.updated_at.isoformat() if p.updated_at else None,
             }
+            # Kommentek számának hozzáadása
+            comment_count = Comment.query.filter_by(post_id=p.id, deleted_at=None).count()
+            post_data["comment_count"] = comment_count
+            
             # Attachment-ek hozzáadása
             attachments = PostAttachment.query.filter_by(post_id=p.id).all()
             if attachments:
@@ -955,7 +959,8 @@ def register_routes(app):
             "content": new_comment.comment,
             "post_id": new_comment.post_id,
             "author_id": new_comment.author_id,
-            "created_at": new_comment.created_at.isoformat()
+            "created_at": new_comment.created_at.isoformat(),
+            "updated_at": new_comment.updated_at.isoformat() if new_comment.updated_at else None,
         }
         
         if attachment_data:
@@ -993,6 +998,7 @@ def register_routes(app):
                 "post_id": c.post_id,
                 "author_id": c.author_id,
                 "created_at": c.created_at.isoformat() if c.created_at else None,
+                "updated_at": c.updated_at.isoformat() if c.updated_at else None,
             }
             # Attachment-ek hozzáadása
             attachments = CommentAttachment.query.filter_by(comment_id=c.id).all()
