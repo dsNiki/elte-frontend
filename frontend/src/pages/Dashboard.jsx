@@ -801,14 +801,13 @@ const Dashboard = () => {
               </Box>
             ) : (
               myGroups.length > 0 && (
-                <Box sx={{ mb: 6 }}>
+                <Box sx={{ mb: { xs: 4, md: 6 } }}>
                   <Box
                     sx={{
-                      mb: 4,
-                      p: 3,
-                      borderRadius: "16px",
-                      background:
-                        "linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(46, 125, 50, 0.1) 100%)",
+                      mb: { xs: 3, md: 4 },  // Kisebb távolság
+                      p: { xs: 2, md: 3 },   // Kisebb padding
+                      borderRadius: { xs: 12, md: 16 },  // Kisebb kerekítés
+                      background: "linear-gradient(135deg, rgba(76, 175, 80, 0.1) 0%, rgba(46, 125, 50, 0.1) 100%)",
                       border: "1px solid rgba(76, 175, 80, 0.3)",
                     }}
                   >
@@ -816,12 +815,13 @@ const Dashboard = () => {
                       variant="h4"
                       sx={{
                         mb: 1,
-                        background:
-                          "linear-gradient(135deg, #4caf50 0%, #388e3c 100%)",
+                        background: "linear-gradient(135deg, #4caf50 0%, #388e3c 100%)",
                         WebkitBackgroundClip: "text",
                         WebkitTextFillColor: "transparent",
                         backgroundClip: "text",
                         fontWeight: 700,
+                        fontSize: { xs: '1.4rem', sm: '1.6rem', md: '2rem' },  // Progresszív méret
+                        lineHeight: { xs: 1.2, md: 1.3 }
                       }}
                     >
                       Saját Csoportjaid ({myGroups.length})
@@ -851,28 +851,52 @@ const Dashboard = () => {
                             },
                           }}
                         >
-                          <CardContent sx={{ p: 3 }}>
+                          <CardContent sx={{ p: { xs: 2, md: 3 } }}>
                             <Box
                               display="flex"
+                              flexDirection={{ xs: 'column', sm: 'row' }}
                               justifyContent="space-between"
-                              alignItems="center"
+                              alignItems={{ xs: 'flex-start', sm: 'center' }}
+                              gap={{ xs: 1.5, sm: 2 }}
+                              width="100%"
                             >
-                              <Box flex={1}>
+                              {/* BAL/NÉV RÉSZ */}
+                              <Box 
+                                flex={1} 
+                                minWidth={0} 
+                                sx={{ 
+                                  order: { xs: 1, sm: 1 },
+                                  mb: { xs: 1.5, sm: 0 }  // Mobilon távolság a gomb előtt
+                                }}
+                              >
+                                {/* NÉV + BADGE */}
                                 <Box display="flex" alignItems="center" gap={1}>
                                   <Typography
-                                    variant="h6"
-                                    sx={{ fontWeight: 700, color: "#2e7d32" }}
+                                    variant={{ xs: 'h6', sm: 'h5' }}
+                                    sx={{
+                                      fontWeight: 700,
+                                      color: "#2e7d32",
+                                      fontSize: { xs: '1rem', sm: '1.2rem', md: '1.4rem' },
+                                      lineHeight: { xs: 1.2, md: 1.3 },
+                                      wordBreak: 'break-word',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      display: '-webkit-box',
+                                      WebkitLineClamp: 2,
+                                      WebkitBoxOrient: 'vertical',
+                                      flexGrow: 1
+                                    }}
                                   >
                                     {group.name}
                                   </Typography>
+                                  
                                   {unreadCount > 0 && (
                                     <Box
                                       sx={{
                                         minWidth: 24,
                                         height: 24,
                                         borderRadius: "12px",
-                                        background:
-                                          "linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%)",
+                                        background: "linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%)",
                                         color: "white",
                                         display: "flex",
                                         alignItems: "center",
@@ -880,40 +904,64 @@ const Dashboard = () => {
                                         fontSize: "0.75rem",
                                         fontWeight: 700,
                                         px: 0.75,
-                                        boxShadow:
-                                          "0 2px 8px rgba(255, 107, 107, 0.4)",
+                                        boxShadow: "0 2px 8px rgba(255, 107, 107, 0.4)",
                                       }}
                                     >
                                       {unreadCount > 99 ? "99+" : unreadCount}
                                     </Box>
                                   )}
                                 </Box>
+
+                                {/* INFO */}
                                 <Typography
-                                  variant="body2"
+                                  variant={{ xs: 'caption', sm: 'body2' }}
                                   color="text.secondary"
+                                  sx={{ mt: 0.5 }}
                                 >
-                                  {group.subject} • Csatlakoztál:{" "}
-                                  {new Date(group.joined_at).toLocaleDateString(
-                                    "hu-HU"
-                                  )}
+                                  {group.subject} • Csatlakoztál: {new Date(group.joined_at).toLocaleDateString("hu-HU")}
                                 </Typography>
+
                                 {group.description && (
                                   <Typography
                                     variant="body2"
-                                    sx={{ mt: 1, fontStyle: "italic" }}
+                                    sx={{ mt: 1, fontStyle: "italic", fontSize: '0.9rem' }}
                                   >
                                     {group.description}
                                   </Typography>
                                 )}
                               </Box>
-                              <IconButton
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleViewMembers(group.id, group.name);
+
+                              {/* JOBB/ICON GOMB - MOBILON LENT */}
+                              <Box
+                                sx={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  order: { xs: 2, sm: 2 },      // Mindig második
+                                  mt: { xs: 1.5, sm: 0 },       // Mobilon lent
+                                  ml: { xs: 0, sm: 2 },         // Desktop jobb
+                                  width: { xs: 'fit-content', sm: 'auto' }
                                 }}
                               >
-                                <PeopleIcon />
-                              </IconButton>
+                                <IconButton
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleViewMembers(group.id, group.name);
+                                  }}
+                                  size="medium"  // EGYSZERŰ: csak size="medium" vagy "large"
+                                  sx={{
+                                    color: "#667eea",           // Mindig látható kék
+                                    p: { xs: 1.2, sm: 1 },
+                                    borderRadius: 2,
+                                    "&:hover": {
+                                      bgcolor: "rgba(102, 126, 234, 0.15)",
+                                      transform: 'scale(1.05)',
+                                      boxShadow: '0 4px 12px rgba(102,126,234,0.25)'
+                                    }
+                                  }}
+                                >
+                                  <PeopleIcon sx={{ fontSize: { xs: 22, sm: 20 } }} />  {/* Responsive ikon méret */}
+                                </IconButton>
+                              </Box>
                             </Box>
                           </CardContent>
                         </Card>

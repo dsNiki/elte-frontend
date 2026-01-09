@@ -290,19 +290,19 @@ const SubjectGroupSearch = () => {
 
   {/* Csoportok a kiválasztott tantárgyhoz */}
   {selectedSubject && (
-    <Box sx={{ width: "100%" }}>
+    <Box sx={{ mb: { xs: 4, md: 6 } }}>
       <Box
         sx={{
-          mb: 4,
-          p: 3,
-          borderRadius: "16px",
+          mb: { xs: 3, md: 4 },  // Kisebb távolság
+          p: { xs: 2, md: 3 },   // Kisebb padding
+          borderRadius: { xs: 12, md: 16 },  // Kisebb kerekítés
           background:
             "linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%)",
-          border: "1px solid rgba(102, 126, 234, 0.2)",
+          border: "1px solid rgba(76, 175, 80, 0.3)",
         }}
       >
         <Typography
-          variant="h4"
+          variant={{ xs: 'h5', sm: 'h4' }}  // h5 mobilon, h4 desktopon
           sx={{
             mb: 1,
             background:
@@ -311,6 +311,8 @@ const SubjectGroupSearch = () => {
             WebkitTextFillColor: "transparent",
             backgroundClip: "text",
             fontWeight: 700,
+            fontSize: { xs: '1.4rem', sm: '1.6rem', md: '2rem' },  // Progresszív méret
+            lineHeight: { xs: 1.2, md: 1.3 }
           }}
         >
           Elérhető csoportok
@@ -387,24 +389,31 @@ const SubjectGroupSearch = () => {
               <CardContent sx={{ p: 3 }}>
                 <Box
                   display="flex"
+                  flexDirection={{ xs: 'column', sm: 'row' }}  // MOBILON VÉGIGNÉZZÜK!
                   justifyContent="space-between"
-                  alignItems="flex-start"
-                  gap={2}
+                  alignItems={{ xs: 'flex-start', sm: 'flex-start' }}
+                  gap={{ xs: 2, sm: 2 }}
                   flexWrap={{ xs: "wrap", sm: "nowrap" }}
                 >
-                  <Box flex={1} minWidth={0}>
+                  <Box flex={1} minWidth={0} sx={{ width: { xs: '100%', sm: 'auto' } }}>
                     <Typography
-                      variant="h6"
-                      gutterBottom
+                      variant={{ xs: 'h6', sm: 'h5' }}
                       sx={{
                         fontWeight: 700,
+                        color: "#2e7d32",
+                        fontSize: { xs: '1rem', sm: '1.2rem', md: '1.4rem' },  // Kisebb mobilon
+                        lineHeight: { xs: 1.2, md: 1.3 },                     // Olvashatóbb
+                        wordBreak: 'break-word',                              // Tördelés
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        display: '-webkit-box',
                         background:
                           "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
                         WebkitBackgroundClip: "text",
                         WebkitTextFillColor: "transparent",
                         backgroundClip: "text",
-                        mb: 1,
-                        fontSize: "1.5rem",
+                        WebkitLineClamp: 2,                                   // Max 2 sor
+                        WebkitBoxOrient: 'vertical'
                       }}
                     >
                       {group.name}
@@ -450,9 +459,12 @@ const SubjectGroupSearch = () => {
 
                   <Box
                     sx={{
-                      display: "flex",
-                      alignItems: "center",
+                      display: 'flex',
+                      alignItems: 'center',
                       gap: 1,
+                      mt: { xs: 2, sm: 0 },  // Mobilon lent toljuk
+                      ml: { xs: 0, sm: 2 },  // Desktopon jobb margó
+                      width: { xs: '100%', sm: 'auto' }  // Mobilon teljes szélesség
                     }}
                   >
                     <Button
@@ -474,27 +486,23 @@ const SubjectGroupSearch = () => {
                         )
                       }
                       sx={{
-                        background:
-                          "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
                         color: "white",
-                        px: 3,
+                        px: { xs: 3, sm: 3 },
                         py: 1.5,
                         borderRadius: "12px",
                         textTransform: "none",
                         fontWeight: 600,
-                        boxShadow:
-                          "0 4px 15px rgba(102, 126, 234, 0.3)",
+                        boxShadow: "0 4px 15px rgba(102, 126, 234, 0.3)",
                         transition: "all 0.3s ease",
+                        width: { xs: '100%', sm: 'auto' },  // Mobilon teljes szélesség
                         "&:hover": {
-                          background:
-                            "linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%)",
-                          boxShadow:
-                            "0 6px 20px rgba(102, 126, 234, 0.4)",
+                          background: "linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%)",
+                          boxShadow: "0 6px 20px rgba(102, 126, 234, 0.4)",
                           transform: "translateY(-2px)",
                         },
                         "&.Mui-disabled": {
-                          background:
-                            "linear-gradient(135deg, #e0e0e0 0%, #bdbdbd 100%)",
+                          background: "linear-gradient(135deg, #e0e0e0 0%, #bdbdbd 100%)",
                           color: "#9e9e9e",
                           boxShadow: "none",
                         },

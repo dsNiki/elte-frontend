@@ -215,133 +215,152 @@ export const Register = () => {
   };
 
   return (
-    <div className="auth-container">
-      <img src={logo} alt="Study Buddy" className="auth-logo" />
-      <div className="auth-card">
-        <h1>Regisztráció</h1>
-
-        <form onSubmit={handleSubmit}>
-          {/* Név input */}
-          <div className="form-group">
-            <label htmlFor="name">Teljes név</label>
-            <input
-              type="text"
-              id="name"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              placeholder="Pl.: Tóth János"
-              disabled={loading}
-              required
-            />
-          </div>
-
-          {/* Email input */}
-          <div className="form-group">
-            <label htmlFor="email">ELTE Email</label>
-            <input
-              type="email"
-              id="email"
-              name="email"
-              value={formData.email}
-              onChange={handleChange}
-              placeholder="user@elte.hu"
-              disabled={loading}
-              required
-            />
-            <small>Csak @elte.hu vagy @student.elte.hu email cím elfogadott</small>
-          </div>
-
-          {/* Szak választó */}
-          <div className="form-group">
-            <label htmlFor="major">Szak</label>
-            <select
-              id="major"
-              name="major"
-              value={formData.major}
-              onChange={handleChange}
+    <>
+      {/* Fix logo header */}
+      <div 
+        className="auth-header" 
+      >
+        <img 
+          src={logo} 
+          alt="Study Buddy" 
+          style={{ 
+            height: '60px', 
+            width: 'auto', 
+            maxWidth: '220px' 
+          }} 
+        />
+      </div>
+  
+      {/* Eredeti container - kis módosítással */}
+      <div className="auth-container" style={{ paddingTop: '1rem' }}>
+        {/* Eredeti logo eltávolítva */}
+        <div className="auth-card" style={{ marginTop: '1rem' }}>
+          <h1>Regisztráció</h1>
+  
+          <form onSubmit={handleSubmit}>
+            {/* Név input */}
+            <div className="form-group">
+              <label htmlFor="name">Teljes név</label>
+              <input
+                type="text"
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                placeholder="Pl.: Tóth János"
+                disabled={loading}
+                required
+              />
+            </div>
+  
+            {/* Email input */}
+            <div className="form-group">
+              <label htmlFor="email">ELTE Email</label>
+              <input
+                type="email"
+                id="email"
+                name="email"
+                value={formData.email}
+                onChange={handleChange}
+                placeholder="user@elte.hu"
+                disabled={loading}
+                required
+              />
+              <small>Csak @elte.hu vagy @student.elte.hu email cím elfogadott</small>
+            </div>
+  
+            {/* Szak választó */}
+            <div className="form-group">
+              <label htmlFor="major">Szak</label>
+              <select
+                id="major"
+                name="major"
+                value={formData.major}
+                onChange={handleChange}
+                disabled={loading}
+              >
+                {MAJORS.map((major) => (
+                  <option key={major} value={major}>
+                    {major}
+                  </option>
+                ))}
+              </select>
+            </div>
+  
+            {/* Hobbik választó */}
+            <div className="form-group">
+              <label htmlFor="hobbies">
+                Hobbik <span className="optional-label">(opcionális)</span>
+              </label>
+              <div className="hobbies-container" id="hobbies" name="hobbies">
+                {HOBBIES.map((hobby) => (
+                  <button
+                    key={hobby}
+                    type="button"
+                    className={`hobby-chip ${formData.hobbies.includes(hobby) ? 'selected' : ''}`}
+                    onClick={() => handleHobbyToggle(hobby)}
+                    disabled={loading}
+                  >
+                    {hobby}
+                  </button>
+                ))}
+              </div>
+              <small>Kattints a hobbikra a kiválasztáshoz</small>
+            </div>
+  
+            {/* Jelszó input */}
+            <div className="form-group">
+              <label htmlFor="password">Jelszó</label>
+              <input
+                type="password"
+                id="password"
+                name="password"
+                value={formData.password}
+                onChange={handleChange}
+                placeholder="••••••••"
+                disabled={loading}
+                required
+              />
+              <small>Minimum 6 karakter</small>
+            </div>
+  
+            {/* Jelszó megerősítés */}
+            <div className="form-group">
+              <label htmlFor="confirmPassword">Jelszó megerősítés</label>
+              <input
+                type="password"
+                id="confirmPassword"
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                placeholder="••••••••"
+                disabled={loading}
+                required
+              />
+            </div>
+  
+            {/* Error megjelenítés */}
+            {error && <div className="error-message">{error}</div>}
+  
+            {/* Submit gomb */}
+            <button
+              type="submit"
+              className="btn btn-primary"
               disabled={loading}
             >
-              {MAJORS.map((major) => (
-                <option key={major} value={major}>
-                  {major}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Hobbik választó */}
-          <div className="form-group">
-            <label htmlFor="hobbies">
-              Hobbik <span className="optional-label">(opcionális)</span>
-            </label>
-            <div className="hobbies-container" id="hobbies" name="hobbies">
-              {HOBBIES.map((hobby) => (
-                <button
-                  key={hobby}
-                  type="button"
-                  className={`hobby-chip ${formData.hobbies.includes(hobby) ? 'selected' : ''}`}
-                  onClick={() => handleHobbyToggle(hobby)}
-                  disabled={loading}
-                >
-                  {hobby}
-                </button>
-              ))}
-            </div>
-            <small>Kattints a hobbikra a kiválasztáshoz</small>
-          </div>
-
-          {/* Jelszó input */}
-          <div className="form-group">
-            <label htmlFor="password">Jelszó</label>
-            <input
-              type="password"
-              id="password"
-              name="password"
-              value={formData.password}
-              onChange={handleChange}
-              placeholder="••••••••"
-              disabled={loading}
-              required
-            />
-            <small>Minimum 6 karakter</small>
-          </div>
-
-          {/* Jelszó megerősítés */}
-          <div className="form-group">
-            <label htmlFor="confirmPassword">Jelszó megerősítés</label>
-            <input
-              type="password"
-              id="confirmPassword"
-              name="confirmPassword"
-              value={formData.confirmPassword}
-              onChange={handleChange}
-              placeholder="••••••••"
-              disabled={loading}
-              required
-            />
-          </div>
-
-          {/* Error megjelenítés */}
-          {error && <div className="error-message">{error}</div>}
-
-          {/* Submit gomb */}
-          <button
-            type="submit"
-            className="btn btn-primary"
-            disabled={loading}
-          >
-            {loading ? 'Regisztráció...' : 'Regisztrálj'}
-          </button>
-        </form>
-
-        {/* Login link */}
-        <p className="auth-footer">
-          Van már fiókod? <Link to="/login">Jelentkezz be</Link>
-        </p>
+              {loading ? 'Regisztráció...' : 'Regisztrálj'}
+            </button>
+          </form>
+  
+          {/* Login link */}
+          <p className="auth-footer">
+            Van már fiókod? <Link to="/login">Jelentkezz be</Link>
+          </p>
+        </div>
       </div>
-    </div>
+    </>
   );
+  
 };
 
 export default Register;
