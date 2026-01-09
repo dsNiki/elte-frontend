@@ -1,32 +1,17 @@
 {
     "rewrites": [
-      {
-        "source": "/api/:path*",
-        "destination": "https://studybuddy-4.onrender.com/:path*"
-      },
-      {
-        "source": "/api/elte/:path*",
-        "destination": "https://elte-tanrend-api.onrender.com/:path*"
-      }
+      {"source": "/api/:path*", "destination": "https://studybuddy-4.onrender.com/:path*"},
+      {"source": "/api/elte/:path*", "destination": "https://elte-tanrend-api.onrender.com/:path*"}
     ],
     "headers": [
-    {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "no-cache, no-store, must-revalidate"
-        },
-        {
-          "key": "Pragma",
-          "value": "no-cache"
-        },
-        {
-          "key": "Expires",
-          "value": "0"
-        }
-      ]
-    }
-  ]
-}
+      {
+        "source": "/(.*)",
+        "headers": [
+          {"key": "Cache-Control", "value": "no-cache, no-store, must-revalidate"},
+          {"key": "Pragma", "value": "no-cache"},
+          {"key": "Expires", "value": "0"}
+        ]
+      }
+    ]
+  }
   
