@@ -524,6 +524,7 @@ const Dashboard = () => {
               gridTemplateColumns: { xs: "1fr", md: "1.4fr 1.6fr" },
               columnGap: 6,
               rowGap: 6,
+              autoRows: { xs: 'minmax(120px, auto)', md: 'minmax(160px, auto)' }, // Új: mobil magasság
               alignItems: "flex-start",
             }}
           >
