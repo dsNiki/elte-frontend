@@ -421,7 +421,7 @@ const Forum = () => {
 
       const token = localStorage.getItem("authToken");
       await axios.post(
-        `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/posts/${
+        `${process.env.NODE_ENV || "http://localhost:5000"}/posts/${
           postToEdit.id
         }/attachments`,
         formData,
@@ -558,7 +558,7 @@ const Forum = () => {
 
       const token = localStorage.getItem("authToken");
       await axios.post(
-        `${process.env.REACT_APP_API_URL || "http://localhost:5000"}/comments/${
+        `${process.env.NODE_ENV || "http://localhost:5000"}/comments/${
           commentToEdit.id
         }/attachments`,
         formData,
@@ -924,7 +924,7 @@ const Forum = () => {
                             startIcon={<DownloadIcon />}
                             onClick={() => {
                               const url = `${
-                                process.env.REACT_APP_API_URL ||
+                                process.env.NODE_ENV ||
                                 "http://localhost:5000"
                               }${attachment.file_url}`;
                               window.open(url, "_blank");
@@ -1186,8 +1186,7 @@ const Forum = () => {
                                                     startIcon={<DownloadIcon />}
                                                     onClick={() => {
                                                       const url = `${
-                                                        process.env
-                                                          .REACT_APP_API_URL ||
+                                                        process.env.NODE_ENV ||
                                                         "http://localhost:5000"
                                                       }${attachment.file_url}`;
                                                       window.open(
