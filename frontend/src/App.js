@@ -6,7 +6,6 @@ import {
   Navigate,
 } from "react-router-dom";
 import { useSelector, useDispatch } from "react-redux";
-import { Analytics } from "@vercel/analytics/react";
 import { initializeAuth } from "./redux/slices/authSlice";
 import Login from "./components/Auth/Login";
 import Register from "./components/Auth/Register";
@@ -71,7 +70,6 @@ function App() {
           />
         </Routes>
       </Router>
-      <Analytics />
     </>
   );
 }
