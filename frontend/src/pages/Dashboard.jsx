@@ -812,13 +812,11 @@ const Dashboard = () => {
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: 1,
-                    boxShadow: '0 4px 15px #c3cfe2',
                     transition: 'all 0.3s ease',
                     '&:hover': { 
                       color: 'rgb(0, 0, 0)', 
                       background: 'linear-gradient(135deg,  #f5f7fa 0%, #c3cfe2 100%)',
-                      transform: 'scale(1.05) translateY(-2px)',
-                      boxShadow: '0 6px 25px #c3cfe2'
+                      transform: 'scale(1.05) translateY(-2px)'
                     }
                   }}
                 >
