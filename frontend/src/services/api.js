@@ -1,7 +1,6 @@
 import axios from "axios";
 
-// PROD: proxy (/api), LOCAL: localhost
-const API_URL = process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5000';
+const API_URL = process.env.REACT_APP_API_URL || "http://localhost:5000";
 
 const api = axios.create({
   baseURL: `${API_URL}`, // http://localhost:5000/
@@ -94,6 +93,17 @@ const groupService = {
     );
     return response.data;
   },
+
+  leaveGroup: async (groupId) => {
+    const token = getAuthToken();
+    const response = await api.delete(`/groups/${groupId}/leave`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+    return response.data;
+  },
+  
 
   myGroups: async () => {
     const token = getAuthToken();

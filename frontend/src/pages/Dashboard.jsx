@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import MenuIcon from '@mui/icons-material/Menu';
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 import {
   Link,
   Avatar,
@@ -55,6 +56,9 @@ const Dashboard = () => {
   const [myGroupsLoading, setMyGroupsLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [isMobileNav, setIsMobileNav] = useState(false);
+  const [leaveConfirmOpen, setLeaveConfirmOpen] = useState(false);
+  const [selectedLeaveGroup, setSelectedLeaveGroup] = useState(null);
+
   
   
   // URL paraméterből olvassuk a tab-ot, ha van
@@ -363,6 +367,32 @@ const Dashboard = () => {
       setSelectedGroupMembers([]);
     }
   };
+
+  const handleLeaveGroupConfirm = async () => {
+    if (!selectedLeaveGroup) return;
+    
+    try {
+      await groupService.leaveGroup(selectedLeaveGroup.id);
+      setToastMessage(`Kiléptél a "${selectedLeaveGroup.name}" csoportból!`);
+      setToastOpen(true);
+      // Frissítjük a csoport listát
+      const updatedGroups = await groupService.myGroups();
+      setMyGroups(updatedGroups.groups);
+    } catch (error) {
+      console.error('Kilépés hiba:', error);
+      setToastMessage('Hiba történt a kilépés során!');
+      setToastOpen(true);
+    }
+    
+    setLeaveConfirmOpen(false);
+    setSelectedLeaveGroup(null);
+  };
+  
+  const handleLeaveClick = (group) => {
+    setSelectedLeaveGroup(group);
+    setLeaveConfirmOpen(true);
+  };
+  
 
   const handleCloseMembersModal = () => {
     setMembersModalOpen(false);
@@ -1138,6 +1168,25 @@ const Dashboard = () => {
                                 >
                                   <PeopleIcon sx={{ fontSize: { xs: 22, sm: 20 } }} />  {/* Responsive ikon méret */}
                                 </IconButton>
+
+                                <IconButton
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleLeaveClick(group);
+                                  }} 
+                                  size="medium"
+                                  sx={{
+                                    color: '#ff6b6b', // Piros szín
+                                    '&:hover': {
+                                      bgcolor: 'rgba(255, 107, 107, 0.15)',
+                                      transform: 'scale(1.05)',
+                                      boxShadow: '0 4px 12px rgba(255,107,107,0.25)'
+                                    }
+                                  }}
+                                >
+                                  <ExitToAppIcon sx={{ fontSize: { xs: 22, sm: 20 } }} />
+                                </IconButton>
+
                               </Box>
                             </Box>
                           </CardContent>
@@ -1584,6 +1633,77 @@ const Dashboard = () => {
         </DialogActions>
       </Dialog>
 
+      {/* Kilépés megerősítő dialog */}
+      <Dialog 
+        open={leaveConfirmOpen} 
+        onClose={() => setLeaveConfirmOpen(false)}
+        maxWidth="sm" 
+        fullWidth
+        PaperProps={{
+          sx: { 
+            borderRadius: '24px', 
+            background: 'rgba(255, 255, 255, 1)', 
+            boxShadow: '0 8px 32px rgba(255, 107, 107, 0.2)' 
+          }
+        }}
+      >
+        <DialogTitle sx={{ 
+          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', 
+          color: 'white', 
+          borderRadius: '24px 24px 0 0', 
+          pb: 2 
+        }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <ExitToAppIcon sx={{ fontSize: 28 }} />
+            <Typography variant="h5" component="div" sx={{ fontWeight: 700 }}>
+              Kilépés a csoportból
+            </Typography>
+          </Box>
+        </DialogTitle>
+        <DialogContent>
+          <Box sx={{ mt: 2 }}>
+            <Typography variant="body1" sx={{ fontWeight: 500, mb: 1 }}>
+              Biztosan ki szeretnél lépni a <strong>"{selectedLeaveGroup?.name}"</strong> csoportból?
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              Ez a művelet visszavonhatatlan. A csoport posztjai és eseményei ezután nem lesznek elérhetők számodra.
+            </Typography>
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ p: 3, gap: 2 }}>
+          <Button 
+            onClick={() => setLeaveConfirmOpen(false)}
+            sx={{ 
+              borderRadius: '12px', 
+              px: 3, py: 1, 
+              fontWeight: 600, 
+              color: '#667eea',
+              '&:hover': { backgroundColor: 'rgba(102, 126, 234, 0.1)' }
+            }}
+          >
+            Mégse
+          </Button>
+          <Button 
+            onClick={handleLeaveGroupConfirm}
+            variant="contained"
+            sx={{ 
+              background: 'linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%)', 
+              borderRadius: '12px', 
+              px: 3, py: 1, 
+              fontWeight: 600, 
+              boxShadow: '0 4px 15px rgba(255, 107, 107, 0.3)',
+              '&:hover': { 
+                background: 'linear-gradient(135deg, #ff5252 0%, #e63950 100%)',
+                boxShadow: '0 6px 20px rgba(255, 107, 107, 0.4)'
+              }
+            }}
+          >
+            Kilépés
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+
       {/* Footer */}
       <footer className="dashboard-footer">
         <Box
@@ -1663,7 +1783,7 @@ const Dashboard = () => {
           }}
         >
           <Typography sx={{ fontWeight: 600, mb: 0.5 }}>
-            Új poszt érkezett!
+            Új Értesítés!
           </Typography>
           <Typography variant="body2">{toastMessage}</Typography>
         </Alert>
