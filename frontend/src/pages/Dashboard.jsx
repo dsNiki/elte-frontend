@@ -2,7 +2,9 @@ import React, { useState, useEffect } from "react";
 import MenuIcon from '@mui/icons-material/Menu';
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import WarningIcon from '@mui/icons-material/Warning';
 import {
+  Link,
   Avatar,
   Dialog,
   DialogTitle,
@@ -34,6 +36,8 @@ import { logout } from "../redux/slices/authSlice";
 import authService, { groupService } from "../services/api";
 import "./Dashboard.css";
 import logo from "../assets/logo_studyBuddy.png";
+import gif1 from "../assets/gif1-study.gif";
+import gif2 from "../assets/gif2-study.gif";
 import studySession from "../assets/study-group-session-stockcake.png";
 import image2 from "../assets/generated-image.png";
 import SubjectGroupSearch from "../components/SubjectGroupSearch.jsx";
@@ -54,6 +58,7 @@ const Dashboard = () => {
   const [myGroups, setMyGroups] = useState([]);
   const [myGroupsLoading, setMyGroupsLoading] = useState(true);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isMobileNav, setIsMobileNav] = useState(false);
   
   
   // URL paraméterből olvassuk a tab-ot, ha van
@@ -69,6 +74,40 @@ const Dashboard = () => {
       return saved === null ? true : saved === "true";
     }
   );
+
+  useEffect(() => {
+    // Késleltetett indítás, hogy a DOM mountolódjon
+    const timeoutId = setTimeout(() => {
+      const navBox = document.querySelector('.desktop-nav-box');
+      if (!navBox) {
+        console.log('Nav box not found!'); // Debug
+        return;
+      }
+  
+      console.log('Observer started on navBox:', navBox); // Debug
+  
+      const observer = new ResizeObserver((entries) => {
+        const entry = entries[0];
+        const rect = entry.contentRect;
+        const lastButton = navBox.querySelector('button:last-of-type'); 
+        if (lastButton && rect.width > 0) {
+          const buttonRect = lastButton.getBoundingClientRect();
+          const containerRect = navBox.closest('.dashboard-nav')?.getBoundingClientRect();
+          if (containerRect) {
+            const overflows = buttonRect.right > containerRect.right - 20;
+            console.log('Overflow check:', overflows, buttonRect.right, containerRect.right); // Debug
+            setIsMobileNav(overflows);
+          }
+        }
+      });
+  
+      observer.observe(navBox);
+      return () => observer.disconnect();
+    }, 100); // 100ms várakozás
+  
+    return () => clearTimeout(timeoutId);
+  }, []);
+  
 
   // Ha URL-ben van tab paraméter, beállítjuk
   useEffect(() => {
@@ -346,6 +385,7 @@ const Dashboard = () => {
     <div className="dashboard-container">
       <nav className="dashboard-nav">
         <img src={logo} alt="Study Buddy" className="dashboard-logo" />
+        
         <div className="dashboard-nav-right">
         <IconButton 
           className="hamburger-btn"
@@ -354,7 +394,7 @@ const Dashboard = () => {
             setMobileMenuOpen(!mobileMenuOpen);
           }}
           sx={{ 
-            display: { xs: 'flex', lg: 'none' },  /* ← xs-től (320px) lg-ig (1200px) VISIBLE */
+            display: isMobileNav ? 'flex' : 'none',
             color: '#667eea',
             position: 'relative',
             zIndex: 10000
@@ -363,39 +403,21 @@ const Dashboard = () => {
           <MenuIcon />
         </IconButton>
 
-
-          <Box className="desktop-nav-box" sx={{ 
-            display: { xs: 'none', sm: 'none', md: 'flex' },  /* ← VÁLTOZATLAN: md felett látható */
+        <Box 
+          className="desktop-nav-box"
+          sx={{ 
+            display: isMobileNav ? 'none' : 'flex',
             alignItems: 'center', 
-            gap: 2 }}>
-            <Avatar
-              onClick={handleProfileClick}
-              sx={{
-                width: 50,
-                height: 50,
-                bgcolor: "#000000",
-                color: "#ffffff",
-                cursor: "pointer",
-                fontSize: "18px",
-                fontWeight: 600,
-                transition: "all 0.3s ease",
-                boxShadow: "0 4px 15px rgba(0, 0, 0, 0.3)",
-                "&:hover": {
-                  transform: "scale(1.1)",
-                  boxShadow: "0 6px 20px rgba(0, 0, 0, 0.4)",
-                  bgcolor: "#1a1a1a",
-                },
-                display: { xs: 'none', md: 'block' },
-              }}
-            >
-            {getInitials(user?.name)}
-            </Avatar>
+            gap: 2 
+          }}
+        >
+            
             {/* Sorrend: Kezdőlap → Saját csoportok → Keresés → Beállítások → Kijelentkezés */}
             <Button
               onClick={() => handleTabChange("home")}
               variant={activeTab === "home" ? "contained" : "outlined"}
               sx={{
-                ml: 2.5,
+                ml: 0.5,
                 mr: 0.5,
                 borderRadius: "999px",
                 px: 2.5,
@@ -406,21 +428,24 @@ const Dashboard = () => {
                   activeTab === "home"
                     ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
                     : "transparent",
-                color: activeTab === "home" ? "#ffffff" : "rgb(0, 0, 0)",
-                borderColor: "#764ba2",
+                color: activeTab === "home" ? "#ffffff" : "#667eea",
+                borderColor: activeTab === "home" ? "#667eea" : "#667eea",
                 boxShadow:
-                  activeTab === "home" ? "0 4px 15px rgb(169, 155, 230)" : "none",
+                  activeTab === "home"
+                    ? "0 4px 15px rgba(102, 126, 234, 0.3)"
+                    : "none",
                 "&:hover": {
                   background:
                     activeTab === "home"
-                      ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
-                      : "linear-gradient(135deg,rgb(190, 196, 231) 0%,rgb(209, 178, 234) 100%)",
+                      ? "linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%)"
+                      : "rgba(102, 126, 234, 0.08)",
                   boxShadow:
                     activeTab === "home"
-                      ? "0 6px 20px rgba(102, 126, 234, 0.5)"
-                      : "none",
+                      ? "0 6px 20px rgba(102, 126, 234, 0.4)"
+                      : "0 2px 8px rgba(102, 126, 234, 0.2)",
+                  transform: "translateY(-1px)",
                 },
-             }}
+              }}
             >
               Kezdőlap
             </Button>
@@ -462,54 +487,80 @@ const Dashboard = () => {
               Saját csoportok
             </Button>
 
-            <Tooltip title="Csoport keresése">
-              <IconButton
-                onClick={handleAddButton}
-                sx={{
-                  ml: 0.5,
-                  mr: 0.5,
-                  color: activeTab === "search" ? "#ffffff" : "#667eea",
+            <Button
+              onClick={handleAddButton}
+              variant={activeTab === "search" ? "contained" : "outlined"}
+              sx={{
+                ml: 0.5,
+                mr: 0.5,
+                borderRadius: "999px",
+                px: 2.5,
+                py: 0.75,
+                fontWeight: 600,
+                textTransform: "none",
+                background:
+                  activeTab === "search"
+                    ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+                    : "transparent",
+                color: activeTab === "search" ? "#ffffff" : "#667eea",
+                borderColor: activeTab === "search" ? "#667eea" : "#667eea",
+                boxShadow:
+                  activeTab === "search"
+                    ? "0 4px 15px rgba(102, 126, 234, 0.3)"
+                    : "none",
+                "&:hover": {
                   background:
                     activeTab === "search"
-                      ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
-                      : "transparent",
-                  border: activeTab === "search" ? "none" : "1px solid #667eea",
-                  borderRadius: "50%",
-                  "&:hover": {
-                    background:
-                      activeTab === "search"
-                        ? "linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%)"
-                        : "rgba(102, 126, 234, 0.1)",
-                    transform: "scale(1.1)",
-                  },
-                  transition: "all 0.2s",
+                      ? "linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%)"
+                      : "rgba(102, 126, 234, 0.08)",
                   boxShadow:
                     activeTab === "search"
-                      ? "0 4px 15px rgba(102, 126, 234, 0.3)"
-                      : "none",
-                }}
-              >
-                <SearchIcon />
-              </IconButton>
-            </Tooltip>
+                      ? "0 6px 20px rgba(102, 126, 234, 0.4)"
+                      : "0 2px 8px rgba(102, 126, 234, 0.2)",
+                  transform: "translateY(-1px)",
+                },
+              }}
+            >
+              <SearchIcon /> Csoport keresés
+            </Button>
 
-            <Tooltip title="Beállítások">
-              <IconButton
-                onClick={() => setSettingsModalOpen(true)}
-                sx={{
-                  ml: 0.5,
-                  mr: 0.5,
-                  color: "#667eea",
-                  "&:hover": {
-                    background: "rgba(102, 126, 234, 0.1)",
-                    transform: "scale(1.1)",
-                  },
-                  transition: "all 0.2s",
-                }}
-              >
-                <SettingsIcon />
-              </IconButton>
-            </Tooltip>
+            <Button
+              onClick={() => setSettingsModalOpen(true)}
+              variant={activeTab === "settings" ? "contained" : "outlined"}
+              sx={{
+                ml: 0.5,
+                mr: 0.5,
+                borderRadius: "999px",
+                px: 2.5,
+                py: 0.75,
+                fontWeight: 600,
+                textTransform: "none",
+                background:
+                  activeTab === "settings"
+                    ? "linear-gradient(135deg, #667eea 0%, #764ba2 100%)"
+                    : "transparent",
+                color: activeTab === "settings" ? "#ffffff" : "#667eea",
+                borderColor: activeTab === "settings" ? "#667eea" : "#667eea",
+                boxShadow:
+                  activeTab === "settings"
+                    ? "0 4px 15px rgba(102, 126, 234, 0.3)"
+                    : "none",
+                "&:hover": {
+                  background:
+                    activeTab === "settings"
+                      ? "linear-gradient(135deg, #5568d3 0%, #6a3d8f 100%)"
+                      : "rgba(102, 126, 234, 0.08)",
+                  boxShadow:
+                    activeTab === "settings"
+                      ? "0 6px 20px rgba(102, 126, 234, 0.4)"
+                      : "0 2px 8px rgba(102, 126, 234, 0.2)",
+                  transform: "translateY(-1px)",
+                },
+              }}
+            >
+              <SettingsIcon />  Beállitások
+            </Button>
+
             <Button
               onClick={handleLogout}
               variant="contained"
@@ -534,10 +585,36 @@ const Dashboard = () => {
             >
               Kijelentkezés
             </Button>
+
+            <Avatar
+              onClick={handleProfileClick}
+              sx={{
+                width: 50,
+                height: 50,
+                bgcolor: "#000000",
+                color: "#ffffff",
+                cursor: "pointer",
+                fontSize: "18px",
+                fontWeight: 600,
+                transition: "all 0.3s ease",
+                boxShadow: "0 4px 15px rgba(0, 0, 0, 0.3)",
+                "&:hover": {
+                  transform: "scale(1.1)",
+                  boxShadow: "0 6px 20px rgba(0, 0, 0, 0.4)",
+                  bgcolor: "#1a1a1a",
+                },
+                display: { xs: 'none', md: 'block' },
+              }}
+            >
+            {getInitials(user?.name)}
+            </Avatar>
+
           </Box>
           {mobileMenuOpen && (
             <div className="mobile-menu">
               {/* PROFIL - Avatar elsőként */}
+
+              
               <Box 
                 onClick={() => { 
                   handleProfileClick(); 
@@ -577,6 +654,7 @@ const Dashboard = () => {
                   </Typography>
                 </Box>
               </Box>
+
               
               <Divider sx={{ my: 1 }} />
               <Button 
@@ -670,6 +748,7 @@ const Dashboard = () => {
               >
                 Kijelentkezés
               </Button>
+
             </div>
           )}
 
@@ -679,112 +758,216 @@ const Dashboard = () => {
       <main className="dashboard-content">
         {/* KEZDŐLAP TAB */}
         {activeTab === "home" && (
-          <Box
-            sx={{
-              maxWidth: "1100px",
-              mx: "auto",
-              mt: 4,
-              display: "grid",
-              gridTemplateColumns: { xs: "1fr", md: "1.4fr 1.6fr" },
-              columnGap: 6,
-              rowGap: 6,
-              alignItems: "flex-start",
+          <>
+          <Alert 
+            severity="warning" 
+            icon={false}
+            sx={{ 
+              display: 'flex', 
+              justifyContent: 'center', 
+              alignItems: 'center',
+              mb: 4, 
+              mt: 2,
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: '#1a1a1a', 
+              borderRadius: '20px', 
+              boxShadow: '0 6px 25px rgba(0, 0, 0, 0.15)', 
+              fontWeight: 700,
+              border: '1px solid #000000',
+              '& .MuiAlert-icon': { color: '#d84315' },
+              position: 'sticky',
+              top: 0,
+              zIndex: 10,
+              animation: 'pulse 2s infinite'
             }}
           >
-            {/* Bal felső: cím + bevezető szöveg */}
-            <Box>
-              <Typography
-                variant="h3"
-                sx={{
-                  mb: 3,
-                  fontWeight: 700,
-                  letterSpacing: "0.02em",
-                }}
-              >
-                Study Buddy – Kezdőlap
-              </Typography>
-
-              <Typography
-                variant="body1"
-                color="text.secondary"
-                sx={{ lineHeight: 1.7 }}
-              >
-                A Study Buddy egy tanulócsoport kereső és szervező felület, ahol
-                tárgyak szerint találhatsz vagy hozhatsz létre csoportokat.
-                Csatlakozhatsz más hallgatókhoz, megnézheted a tagok adatait, és
-                könnyebben szervezhetitek a közös tanulást.
-              </Typography>
-            </Box>
-
-            {/* Jobb felső: “kártya” / kép helye */}
-            <Box
-              sx={{
-                borderRadius: "8px",
-                overflow: "hidden",
-                minHeight: 160,
-              }}
-            >
-              <img
-                src={studySession}
-                alt="Tanulócsoport"
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  display: "block",
-                }}
-              />
-            </Box>
-
-            {/* Bal alsó: nagy kép blokk */}
-            <Box
-              sx={{
-                borderRadius: "8px",
-                overflow: "hidden",
-              }}
-            >
-              <img
-                src={image2}
-                alt="Study Buddy lépések"
-                style={{
-                  width: "100%",
-                  height: "100%",
-                  objectFit: "cover",
-                  display: "block",
-                }}
-              />
-            </Box>
-
-            <Box>
-              <Typography
-                variant="body1"
-                color="text.secondary"
-                sx={{ lineHeight: 1.7, mb: 1 }}
-              >
-                Használat lépésről lépésre:
-              </Typography>
-
-              <Box component="ul" sx={{ pl: 3, m: 0 }}>
-                <Box component="li" sx={{ mb: 0.5 }}>
-                  Válaszd a <strong>Keresés</strong> gombot, majd add meg a
-                  tárgyat, amihez csoportot keresel.
-                </Box>
-                <Box component="li" sx={{ mb: 0.5 }}>
-                  A találati listában látod a csoport nevét, leírását, létszámát
-                  és közös hobbikat.
-                </Box>
-                <Box component="li" sx={{ mb: 0.5 }}>
-                  A <strong>Csatlakozás</strong> gombbal beléphetsz a csoportba,
-                  ezután a<strong> Saját csoportok</strong> oldalon mindig
-                  elérhető lesz.
-                </Box>
-                <Box component="li">
-                  A profilodban módosíthatod a nevedet, szakodat és a
-                  hobbijaidat, hogy jobb ajánlásokat kapj.
-                </Box>
+            <Typography variant="h6" sx={{ 
+              fontSize: { xs: '0.7rem', sm: '0.9rem', md: '1.1rem' },
+              lineHeight: 1.3,
+              fontWeight: 700,
+              letterSpacing: '0.02em'
+            }}>
+              Ez egy <strong>kezdetleges demo verzió</strong>! Az alkalmazás folyamatos fejlesztés alatt áll.
+              <br />
+              <span style={{ fontWeight: 600, color: '#333' }}>
+                Kérlek segítsd a munkánkat ötleteiddel és tapasztalataiddal! 
+              </span>
+              <br />
+              <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'center', 
+                alignItems: 'center',
+                mt: 2, 
+                mb: 1 
+              }}>
+                <Link 
+                  href="https://docs.google.com/forms/d/e/1FAIpQLSdo-Rx_eSzK5svhMc4vAx266AWmqeLJla7O00XeRwSWrkUnDw/viewform"
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  sx={{ 
+                    color: 'rgb(255, 255, 255)', 
+                    fontWeight: 800, 
+                    textDecoration: 'none !important',
+                    fontSize: { xs: '0.7rem', md: '0.9rem' },
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    px: 4, py: 1.5, 
+                    borderRadius: '20px',
+                    border: '1px solid #000000',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 1,
+                    boxShadow: '0 4px 15px #c3cfe2',
+                    transition: 'all 0.3s ease',
+                    '&:hover': { 
+                      color: 'rgb(0, 0, 0)', 
+                      background: 'linear-gradient(135deg,  #f5f7fa 0%, #c3cfe2 100%)',
+                      transform: 'scale(1.05) translateY(-2px)',
+                      boxShadow: '0 6px 25px #c3cfe2'
+                    }
+                  }}
+                >
+                  Küldj visszajelzést!
+                </Link>
               </Box>
+            </Typography>
+          </Alert>
+          <Box sx={{ maxWidth: '1100px', mx: 'auto', mt: 6, mb: 8 }}>
+          
+          {/* Study Buddy cím*/}
+          <Typography 
+            variant="h1" 
+            sx={{ 
+              fontSize: { xs: '3rem', sm: '4rem', md: '5.5rem' }, 
+              fontWeight: 900, 
+              textAlign: 'center', 
+              mb: 2, 
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              lineHeight: 1.1,
+              letterSpacing: '-0.02em'
+            }}
+          >
+            Study Buddy
+          </Typography>
+
+          {/* Slogan sor */}
+          <Typography 
+            variant="h3" 
+            sx={{ 
+              fontSize: { xs: '1.5rem', sm: '1.8rem', md: '2.2rem' },
+              fontWeight: 700,
+              textAlign: 'center', 
+              mb: 3, 
+              color: '#333',
+              lineHeight: 1.3
+            }}
+          >
+            Együtt könnyebb a tanulás!
+          </Typography>
+
+          {/* Leírás */}
+          <Typography 
+            variant="h5" 
+            sx={{ 
+              fontSize: { xs: '1.1rem', sm: '1.2rem', md: '1.4rem' },
+              textAlign: 'center', 
+              mb: 6, 
+              color: '#555',
+              lineHeight: 1.6,
+              maxWidth: '800px',
+              mx: 'auto',
+              px: 2
+            }}
+          >
+            A Study Buddy egy tanulócsoport kereső és szervező felület, ahol tárgyak szerint találhatsz vagy hozhatsz létre csoportokat. Csatlakozhatsz más hallgatókhoz és könnyebben szervezhetitek a közös tanulást.
+          </Typography>
+
+          {/* Első GIF*/}
+          <Box sx={{ textAlign: 'center', mb: 8 }}>
+            <img 
+              src={gif1}
+              alt="Study Buddy animáció" 
+              style={{ 
+                maxWidth: '100%', 
+                height: 'auto', 
+                borderRadius: '20px', 
+                boxShadow: '0 12px 40px rgba(0,0,0,0.2)',
+                maxHeight: '400px'
+              }} 
+            />
+          </Box>
+
+          {/* Hogyan használd?*/}
+          <Typography 
+            variant="h2" 
+            sx={{ 
+              fontSize: { xs: '2rem', sm: '2.5rem', md: '3rem' },
+              fontWeight: 800,
+              textAlign: 'center', 
+              mb: 5, 
+              color: '#333',
+              letterSpacing: '-0.01em'
+            }}
+          >
+            Hogyan használd?
+          </Typography>
+
+          {/* Felsorolás*/}
+          <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3, maxWidth: '800px', mx: 'auto' }}>
+            <Box sx={{ 
+              p: 4, 
+              background: 'linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%)', 
+              borderRadius: '20px', 
+              border: '1px solid rgba(102,126,234,0.2)',
+              boxShadow: '0 8px 25px rgba(102,126,234,0.1)'
+            }}>
+              <Typography sx={{ fontSize: '1.1rem', fontWeight: 600, lineHeight: 1.5, color: '#333' }}>
+                Válaszd a <strong>Csoport keresés</strong> gombot, majd add meg a tárgyat, amihez csoportot keresel.
+              </Typography>
+            </Box>
+            <Box sx={{ 
+              p: 4, 
+              background: 'linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%)', 
+              borderRadius: '20px', 
+              border: '1px solid rgba(102,126,234,0.2)',
+              boxShadow: '0 8px 25px rgba(102,126,234,0.1)'
+            }}>
+              <Typography sx={{ fontSize: '1.1rem', fontWeight: 600, lineHeight: 1.5, color: '#333' }}>
+                A találati listában látod a csoport nevét, leírását, létszámát és közös hobbikat.
+              </Typography>
+            </Box>
+            <Box sx={{ 
+              p: 4, 
+              background: 'linear-gradient(135deg, #f8f9ff 0%, #f0f2ff 100%)', 
+              borderRadius: '20px', 
+              border: '1px solid rgba(102,126,234,0.2)',
+              boxShadow: '0 8px 25px rgba(102,126,234,0.1)'
+            }}>
+              <Typography sx={{ fontSize: '1.1rem', fontWeight: 600, lineHeight: 1.5, color: '#333' }}>
+                A <strong>Csatlakozás</strong> gombbal beléphetsz a csoportba, ezután a <strong>Saját csoportok</strong> oldalon mindig elérhető lesz.
+              </Typography>
             </Box>
           </Box>
+
+          {/* Második GIF */}
+          <Box sx={{ textAlign: 'center', mt: 8 }}>
+            <img 
+              src={gif2}
+              alt="Hogyan használd animáció" 
+              style={{ 
+                maxWidth: '100%', 
+                height: 'auto', 
+                borderRadius: '20px', 
+                boxShadow: '0 12px 40px rgba(0,0,0,0.2)',
+                maxHeight: '400px'
+              }} 
+            />
+          </Box>
+
+        </Box>
+          </>
         )}
         {/* KERESÉS TAB */}
         {activeTab === "search" && <SubjectGroupSearch />}
