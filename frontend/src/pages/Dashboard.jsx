@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import MenuIcon from '@mui/icons-material/Menu';
 import { useDispatch, useSelector } from "react-redux";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import WarningIcon from '@mui/icons-material/Warning';
 import {
   Link,
   Avatar,
@@ -24,7 +23,6 @@ import {
   Alert,
   IconButton,
   Snackbar,
-  Tooltip,
 } from "@mui/material";
 import {
   Logout as LogoutIcon,
@@ -38,8 +36,6 @@ import "./Dashboard.css";
 import logo from "../assets/logo_studyBuddy.png";
 import gif1 from "../assets/gif1-study.gif";
 import gif2 from "../assets/gif2-study.gif";
-import studySession from "../assets/study-group-session-stockcake.png";
-import image2 from "../assets/generated-image.png";
 import SubjectGroupSearch from "../components/SubjectGroupSearch.jsx";
 
 // Tárgyak listája pelda
